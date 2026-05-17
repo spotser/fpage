@@ -1,0 +1,407 @@
+import { Resvg } from "@resvg/resvg-js";
+import fs from "fs";
+
+// =========================================================
+// ENVIRONMENT & SECRETS LOADER
+// =========================================================
+function loadSecrets() {
+  let config = {};
+  try {
+    if (fs.existsSync('./wrangler.toml')) {
+      const content = fs.readFileSync('./wrangler.toml', 'utf-8');
+      const getVal = (key) => {
+        const match = content.match(new RegExp(`${key}\\s*=\\s*"([^"]+)"`));
+        return match ? match[1] : null;
+      };
+      config.PAGE_OR_IG_ID = getVal('PAGE_OR_IG_ID');
+      config.PAGE_ACCESS_TOKEN = getVal('PAGE_ACCESS_TOKEN');
+      config.GROQ_API_KEY = getVal('GROQ_API_KEY');
+    }
+  } catch(e) {
+    console.warn("Could not read wrangler.toml, relying on environment variables.");
+  }
+  
+  return {
+    PAGE_OR_IG_ID: process.env.PAGE_OR_IG_ID || config.PAGE_OR_IG_ID,
+    PAGE_ACCESS_TOKEN: process.env.PAGE_ACCESS_TOKEN || config.PAGE_ACCESS_TOKEN,
+    GROQ_API_KEY: process.env.GROQ_API_KEY || config.GROQ_API_KEY,
+  };
+}
+
+const SECRETS = loadSecrets();
+const GROQ_MODEL = "llama-3.3-70b-versatile";
+
+// =========================================================
+// SVG CAROUSEL TEMPLATE CONSTANTS
+// =========================================================
+const WIDTH = 1080;
+const HEIGHT = 1350;
+
+const THEMES = [
+  {
+    name: "Neon Dark",
+    bg1: "#0f172a",
+    bg2: "#1e293b",
+    accent: "#38bdf8",
+    accent2: "#a855f7",
+    text: "#ffffff",
+    sub: "#cbd5e1"
+  },
+  {
+    name: "Luxury Gold",
+    bg1: "#0f0f0f",
+    bg2: "#1e1b16",
+    accent: "#fbbf24",
+    accent2: "#f59e0b",
+    text: "#ffffff",
+    sub: "#e5e7eb"
+  },
+  {
+    name: "Cyber Pink",
+    bg1: "#1e1b4b",
+    bg2: "#312e81",
+    accent: "#ec4899",
+    accent2: "#8b5cf6",
+    text: "#ffffff",
+    sub: "#ddd6fe"
+  }
+];
+
+function getFontSize(text) {
+  const len = text.length;
+  if (len < 35) return 82;
+  if (len < 55) return 72;
+  if (len < 75) return 62;
+  if (len < 100) return 54;
+  return 46;
+}
+
+function wrapText(text, maxChars = 16) {
+  const words = text.split(" ");
+  const lines = [];
+  let line = "";
+  for (const word of words) {
+    if ((line + word).length > maxChars) {
+      lines.push(line.trim());
+      line = word + " ";
+    } else {
+      line += word + " ";
+    }
+  }
+  if (line.trim()) lines.push(line.trim());
+  return lines;
+}
+
+function renderHighlightedText(lines, highlights, fontSize, theme) {
+  let y = 0;
+  return lines.map(line => {
+    let modified = line;
+    const hl = Array.isArray(highlights) ? highlights : [];
+    hl.forEach(h => {
+      // Basic string replace for exact matches
+      if (h) modified = modified.split(h).join(`|||${h}|||`);
+    });
+
+    const parts = modified.split("|||");
+    let x = 0;
+    const tspans = parts.map((part, i) => {
+      const isHighlight = hl.includes(part);
+      const span = `
+        <tspan
+          x="${x}"
+          dy="0"
+          fill="${isHighlight ? theme.accent : theme.text}"
+          font-weight="${isHighlight ? 900 : 700}"
+          text-decoration="${isHighlight ? "underline" : "none"}"
+        >
+          ${part}
+        </tspan>
+      `;
+      x += part.length * (fontSize * 0.55);
+      return span;
+    }).join("");
+
+    const textSvg = `
+      <text
+        x="100"
+        y="${y}"
+        font-size="${fontSize}"
+        font-family="'Noto Sans Devanagari', sans-serif"
+        line-height="1.4"
+      >
+        ${tspans}
+      </text>
+    `;
+    y += fontSize * 1.5;
+    return textSvg;
+  }).join("");
+}
+
+function generateSlide(slide, index, theme, category, totalSlides) {
+  const fontSize = getFontSize(slide.text);
+  const lines = wrapText(slide.text);
+  const renderedText = renderHighlightedText(lines, slide.highlight, fontSize, theme);
+
+  return `
+  <svg width="${WIDTH}" height="${HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="g1">
+        <stop offset="0%" stop-color="${theme.accent}" stop-opacity="0.45"/>
+        <stop offset="100%" stop-color="${theme.bg1}" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="g2">
+        <stop offset="0%" stop-color="${theme.accent2}" stop-opacity="0.45"/>
+        <stop offset="100%" stop-color="${theme.bg2}" stop-opacity="0"/>
+      </radialGradient>
+      <filter id="blur">
+        <feGaussianBlur stdDeviation="50"/>
+      </filter>
+    </defs>
+
+    <!-- BACKGROUND -->
+    <rect width="100%" height="100%" fill="${theme.bg1}"/>
+
+    <!-- Animated Blobs (Static capture in resvg, but visually pleasing) -->
+    <circle cx="250" cy="250" r="300" fill="url(#g1)" filter="url(#blur)" />
+    <circle cx="850" cy="950" r="350" fill="url(#g2)" filter="url(#blur)" />
+
+    <!-- Noise Overlay -->
+    <rect width="100%" height="100%" fill="rgba(255,255,255,0.02)"/>
+
+    <!-- Decorative Shapes -->
+    <circle cx="950" cy="120" r="80" fill="${theme.accent}" opacity="0.15"/>
+    <rect x="70" y="1100" width="200" height="10" rx="5" fill="${theme.accent2}" opacity="0.4"/>
+
+    <!-- Quote Marks -->
+    <text x="70" y="180" font-size="160" fill="${theme.accent}" opacity="0.18" font-family="serif">“</text>
+
+    <!-- Glass Card -->
+    <rect x="60" y="120" rx="42" ry="42" width="960" height="1080" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
+
+    <!-- Emoji -->
+    <text x="120" y="260" font-size="72">${slide.emoji || '✨'}</text>
+
+    <!-- CATEGORY -->
+    <text x="210" y="250" font-size="36" fill="${theme.sub}" font-family="sans-serif" letter-spacing="4" font-weight="700">
+      ${category.toUpperCase()}
+    </text>
+
+    <!-- SLIDE INDICATOR -->
+    <text x="780" y="250" font-size="28" fill="${theme.sub}" font-family="sans-serif" font-weight="700" opacity="0.6">
+      ${index + 1} / ${totalSlides}
+    </text>
+
+    <!-- MAIN TEXT -->
+    <g transform="translate(0,420)">
+      ${renderedText}
+    </g>
+
+    <!-- CTA BAR -->
+    <rect x="100" y="1120" width="320" height="70" rx="35" fill="${theme.accent}" opacity="0.18"/>
+    <text x="135" y="1165" font-size="30" fill="${theme.text}" font-family="sans-serif" font-weight="700">
+      @akpage
+    </text>
+  </svg>
+  `;
+}
+
+async function renderSlidePng(slide, index, theme, category, totalSlides) {
+  const svg = generateSlide(slide, index, theme, category, totalSlides);
+  
+  const fontConfig = { loadSystemFonts: true };
+  // Check if downloaded font is available
+  if (fs.existsSync('./NotoSansDevanagari-Bold.ttf')) {
+    fontConfig.fontFiles = ['./NotoSansDevanagari-Bold.ttf'];
+    fontConfig.defaultFontFamily = 'Noto Sans Devanagari';
+  }
+
+  const resvg = new Resvg(svg, {
+    fitTo: { mode: "width", value: WIDTH },
+    font: fontConfig
+  });
+
+  return resvg.render().asPng();
+}
+
+// =========================================================
+// CONTENT GENERATION VIA GROQ
+// =========================================================
+function getRandomNiche() {
+  const niches = ["STOICISM", "WEALTH", "MOTIVATION", "PSYCHOLOGY"];
+  return niches[Math.floor(Math.random() * niches.length)];
+}
+
+async function generateCarouselContent(niche) {
+  const prompt = `
+Generate a highly viral, swipe-worthy multi-slide Instagram-style carousel post in Hindi.
+The niche/theme is: "${niche}".
+
+Rules:
+- Strictly generate exactly 4 slides.
+- Slide 1 MUST be a highly compelling, curiosity-driven question or hook.
+- Slide 2 and 3 must present 2 shocking, high-value, revealing insights.
+- Slide 4 MUST be a strong conclusion or call-to-action.
+- For each slide, provide an array of 1 to 2 exact words/phrases from the text to be highlighted.
+- Provide a relevant emoji for each slide.
+- Text must be in pure, simple Hindi (Devanagari script). Keep text punchy (max 12 words per slide).
+
+Return strictly in the following JSON format:
+{
+  "category": "${niche}",
+  "slides": [
+    {
+      "text": "Slide 1 Text in Hindi",
+      "highlight": ["word1", "word2"],
+      "emoji": "🧠"
+    }
+  ],
+  "caption": "A short engaging post caption with 5-8 hashtags"
+}
+
+Respond ONLY with valid JSON.
+`;
+
+  if (!SECRETS.GROQ_API_KEY) throw new Error("GROQ_API_KEY is missing!");
+
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${SECRETS.GROQ_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.75
+    })
+  });
+
+  if (!res.ok) {
+    throw new Error(`Groq API Error: ${await res.text()}`);
+  }
+
+  const json = await res.json();
+  const content = json.choices[0].message.content.trim();
+  const cleanStr = content.replace(/```json/g, "").replace(/```/g, "").trim();
+  return JSON.parse(cleanStr);
+}
+
+// =========================================================
+// FACEBOOK API (MULTIPART FORM DATA)
+// =========================================================
+async function getPageAccessToken(pageId, token) {
+  if (!token) return token;
+  try {
+    const res = await fetch(`https://graph.facebook.com/v20.0/${pageId}?fields=access_token&access_token=${token}`);
+    if (res.ok) {
+      const json = await res.json();
+      if (json.access_token) return json.access_token;
+    }
+  } catch (e) {}
+  return token;
+}
+
+async function uploadCarouselToFacebook(pngBuffers, caption) {
+  if (!SECRETS.PAGE_OR_IG_ID || !SECRETS.PAGE_ACCESS_TOKEN) {
+    throw new Error("Missing Facebook Page ID or Token!");
+  }
+
+  const pageId = SECRETS.PAGE_OR_IG_ID;
+  const pageAccessToken = await getPageAccessToken(pageId, SECRETS.PAGE_ACCESS_TOKEN);
+
+  const mediaIds = [];
+  
+  // 1. Upload all slides as unpublished photos
+  for (let i = 0; i < pngBuffers.length; i++) {
+    const formData = new FormData();
+    formData.append('access_token', pageAccessToken);
+    formData.append('published', 'false');
+    formData.append('source', new Blob([pngBuffers[i]], { type: 'image/png' }), `slide_${i}.png`);
+
+    console.log(`Uploading slide ${i + 1}...`);
+    const res = await fetch(`https://graph.facebook.com/v20.0/${pageId}/photos`, {
+      method: "POST",
+      body: formData
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to upload slide ${i}: ${await res.text()}`);
+    }
+
+    const data = await res.json();
+    if (data.id) {
+      mediaIds.push({ media_fbid: data.id });
+    }
+  }
+
+  // 2. Publish multi-photo feed post
+  console.log("Publishing carousel post...");
+  const feedRes = await fetch(`https://graph.facebook.com/v20.0/${pageId}/feed`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      message: caption,
+      attached_media: JSON.stringify(mediaIds),
+      access_token: pageAccessToken
+    })
+  });
+
+  if (!feedRes.ok) {
+    throw new Error(`Facebook Carousel Post failed: ${await feedRes.text()}`);
+  }
+
+  const feedData = await feedRes.json();
+  console.log("✅ Successfully posted carousel! Post ID:", feedData.id);
+}
+
+// =========================================================
+// MAIN RUNNER
+// =========================================================
+async function run() {
+  try {
+    console.log("Starting Carousel Generation...");
+    const niche = getRandomNiche();
+    console.log(`Selected Niche: ${niche}`);
+
+    console.log("Generating content via Groq...");
+    let content;
+    try {
+      content = await generateCarouselContent(niche);
+    } catch (e) {
+      console.error("Groq generation failed, using fallback:", e.message);
+      content = {
+        category: niche,
+        slides: [
+          { text: "क्यों 90% लोग अपनी असली क्षमता कभी पहचान नहीं पाते?", highlight: ["90%", "क्षमता"], emoji: "🧠" },
+          { text: "क्योंकि बचपन से उनका दिमाग डर और तुलना से प्रोग्राम होता है।", highlight: ["डर", "तुलना"], emoji: "⚠️" },
+          { text: "आपका दिमाग वही मानता है जो आप रोज़ खुद से कहते हैं।", highlight: ["दिमाग", "रोज़"], emoji: "🔥" },
+          { text: "हर सुबह 5 मिनट अपनी ताकत लिखो और बदलाव देखो।", highlight: ["5 मिनट", "ताकत"], emoji: "🚀" }
+        ],
+        caption: "अपनी सोच बदलो, दुनिया बदल जाएगी। #mindset #growth"
+      };
+    }
+
+    console.log(`Generated ${content.slides.length} slides.`);
+
+    // Pick a consistent random theme for the entire carousel
+    const theme = THEMES[Math.floor(Math.random() * THEMES.length)];
+    console.log(`Selected Theme: ${theme.name}`);
+
+    const pngBuffers = [];
+    for (let i = 0; i < content.slides.length; i++) {
+      console.log(`Rendering SVG -> PNG for slide ${i + 1}...`);
+      const pngBuffer = await renderSlidePng(content.slides[i], i, theme, content.category, content.slides.length);
+      pngBuffers.push(pngBuffer);
+    }
+
+    console.log("Uploading to Facebook...");
+    await uploadCarouselToFacebook(pngBuffers, content.caption);
+
+    console.log("All done!");
+  } catch (error) {
+    console.error("Fatal Error:", error);
+    process.exit(1);
+  }
+}
+
+run();
