@@ -310,7 +310,7 @@ RULES:
 5. "emoji": one relevant emoji per slide.
 6. "theme_title": catchy 2-4 word heading e.g. "MINDSET SHIFT", "WEALTH SECRET #1".
 7. "caption": unique, curiosity-driven hook UNDER 12 words + 1-2 emojis, then two newlines, then three dots each on a new line, then 5 viral hashtags.
-   Caption MUST be unique and niche-specific. Do NOT use generic phrases.
+   Caption MUST be unique and niche-specific. Do NOT use generic phrases and dont include unlock or write same words in captions.
    Format exactly:
    [hook under 12 words] [emoji][emoji]\\n\\n.\\n.\\n.\\n#tag1 #tag2 #tag3 #tag4 #tag5
 
