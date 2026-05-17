@@ -7,7 +7,7 @@ import fs from "fs";
 const CONFIG = {
   HANDLE: "@Akhil",
 
-  GROQ_MODEL: "llama-3.3-70b-versatile",
+  GROQ_MODEL: "gpt-oss-120b",
 
   WIDTH: 1080,
 
@@ -68,14 +68,6 @@ function loadSecrets() {
 
       cfg.GROQ_API_KEY =
         get("GROQ_API_KEY");
-
-      cfg.APP_ID = get("APP_ID");
-
-      cfg.APP_SECRET =
-        get("APP_SECRET");
-
-      cfg.USER_ACCESS_TOKEN =
-        get("USER_ACCESS_TOKEN");
     }
   } catch {}
 
@@ -91,19 +83,6 @@ function loadSecrets() {
     GROQ_API_KEY:
       process.env.GROQ_API_KEY ??
       cfg.GROQ_API_KEY,
-
-    APP_ID:
-      process.env.APP_ID ??
-      cfg.APP_ID,
-
-    APP_SECRET:
-      process.env.APP_SECRET ??
-      cfg.APP_SECRET,
-
-    USER_ACCESS_TOKEN:
-      process.env
-        .USER_ACCESS_TOKEN ??
-      cfg.USER_ACCESS_TOKEN,
   };
 }
 
@@ -731,7 +710,7 @@ Return ONLY raw JSON.
   "caption":"..."
 }
 `;
-  
+
   const res = await fetch(
     "https://api.groq.com/openai/v1/chat/completions",
 
@@ -749,7 +728,7 @@ Return ONLY raw JSON.
         model:
           CONFIG.GROQ_MODEL,
 
-        temperature: 0.9,
+        temperature: 1,
 
         messages: [
           {
@@ -806,85 +785,13 @@ Return ONLY raw JSON.
     cleanHighlights
   );
 
+  if (!data.slides.length) {
+    throw new Error(
+      "No valid slides"
+    );
+  }
+
   return data;
-}
-
-// =========================================================
-// TOKEN EXCHANGE
-// =========================================================
-async function getPageAccessToken() {
-  if (
-    SECRETS.PAGE_ACCESS_TOKEN
-  ) {
-    return SECRETS.PAGE_ACCESS_TOKEN;
-  }
-
-  if (
-    !SECRETS.APP_ID ||
-    !SECRETS.APP_SECRET ||
-    !SECRETS.USER_ACCESS_TOKEN
-  ) {
-    throw new Error(
-      "Missing token exchange secrets"
-    );
-  }
-
-  console.log(
-    "Generating long-lived token..."
-  );
-
-  const longLived = await fetch(
-    `https://graph.facebook.com/v20.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${SECRETS.APP_ID}&client_secret=${SECRETS.APP_SECRET}&fb_exchange_token=${SECRETS.USER_ACCESS_TOKEN}`
-  );
-
-  const longData =
-    await longLived.json();
-
-  if (!longData.access_token) {
-    throw new Error(
-      JSON.stringify(longData)
-    );
-  }
-
-  console.log(
-    "Fetching pages..."
-  );
-
-  const pagesRes = await fetch(
-    `https://graph.facebook.com/v20.0/me/accounts?access_token=${longData.access_token}`
-  );
-
-  const pagesData =
-    await pagesRes.json();
-
-  if (
-    !pagesData.data ||
-    !pagesData.data.length
-  ) {
-    throw new Error(
-      "No pages found"
-    );
-  }
-
-  const page =
-    pagesData.data.find(
-      (p) =>
-        p.id ===
-        SECRETS.PAGE_OR_IG_ID
-    ) || pagesData.data[0];
-
-  if (!page.access_token) {
-    throw new Error(
-      "No page token"
-    );
-  }
-
-  console.log(
-    "Using page:",
-    page.name
-  );
-
-  return page.access_token;
 }
 
 // =========================================================
@@ -897,8 +804,20 @@ async function uploadPhoto(
   const pid =
     SECRETS.PAGE_OR_IG_ID;
 
+  if (!pid) {
+    throw new Error(
+      "Missing PAGE_OR_IG_ID"
+    );
+  }
+
   const token =
-    await getPageAccessToken();
+    SECRETS.PAGE_ACCESS_TOKEN;
+
+  if (!token) {
+    throw new Error(
+      "Missing PAGE_ACCESS_TOKEN"
+    );
+  }
 
   const fd = new FormData();
 
