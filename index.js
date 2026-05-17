@@ -93,7 +93,9 @@ function wrapText(text, maxChars = 16) {
 }
 
 function renderHighlightedText(lines, highlights, fontSize, theme) {
-  let y = 0;
+  const totalHeight = lines.length * (fontSize * 1.5);
+  let y = 320 - (totalHeight / 2) + (fontSize / 2);
+
   return lines.map(line => {
     let modified = line;
     const hl = Array.isArray(highlights) ? highlights : [];
@@ -117,10 +119,11 @@ function renderHighlightedText(lines, highlights, fontSize, theme) {
 
     const textSvg = `
       <text
-        x="100"
+        x="540"
         y="${y}"
         font-size="${fontSize}"
-        font-family="'Noto Sans Devanagari', sans-serif"
+        font-family="'Outfit', 'Noto Sans Devanagari', sans-serif"
+        text-anchor="middle"
         line-height="1.4"
       >
         ${tspans}
@@ -227,7 +230,7 @@ function getRandomNiche() {
 
 async function generateCarouselContent(niche) {
   const prompt = `
-Generate a highly viral, swipe-worthy multi-slide Instagram-style carousel post in Hindi.
+Generate a highly viral, swipe-worthy multi-slide Instagram-style carousel post in English.
 The niche/theme is: "${niche}".
 
 Rules:
@@ -237,14 +240,14 @@ Rules:
 - Slide 4 MUST be a strong conclusion or call-to-action.
 - For each slide, provide an array of 1 to 2 exact words/phrases from the text to be highlighted.
 - Provide a relevant emoji for each slide.
-- Text must be in pure, simple Hindi (Devanagari script). Keep text punchy (max 12 words per slide).
+- Text must be in perfect, highly engaging English. Keep text punchy (max 12 words per slide).
 
 Return strictly in the following JSON format:
 {
   "category": "${niche}",
   "slides": [
     {
-      "text": "Slide 1 Text in Hindi",
+      "text": "Slide 1 Text in English",
       "highlight": ["word1", "word2"],
       "emoji": "🧠"
     }
@@ -366,12 +369,12 @@ async function run() {
       content = {
         category: niche,
         slides: [
-          { text: "क्यों 90% लोग अपनी असली क्षमता कभी पहचान नहीं पाते?", highlight: ["90%", "क्षमता"], emoji: "🧠" },
-          { text: "क्योंकि बचपन से उनका दिमाग डर और तुलना से प्रोग्राम होता है।", highlight: ["डर", "तुलना"], emoji: "⚠️" },
-          { text: "आपका दिमाग वही मानता है जो आप रोज़ खुद से कहते हैं।", highlight: ["दिमाग", "रोज़"], emoji: "🔥" },
-          { text: "हर सुबह 5 मिनट अपनी ताकत लिखो और बदलाव देखो।", highlight: ["5 मिनट", "ताकत"], emoji: "🚀" }
+          { text: "Why do 90% of people never reach their true potential?", highlight: ["90%", "potential"], emoji: "🧠" },
+          { text: "Because from childhood, their minds are programmed by fear and comparison.", highlight: ["fear", "comparison"], emoji: "⚠️" },
+          { text: "Your brain believes whatever you repeatedly tell yourself every single day.", highlight: ["brain", "repeatedly"], emoji: "🔥" },
+          { text: "Write down your strengths for 5 minutes every morning and transform.", highlight: ["5 minutes", "transform"], emoji: "🚀" }
         ],
-        caption: "अपनी सोच बदलो, दुनिया बदल जाएगी। #mindset #growth"
+        caption: "Change your thoughts, change your world. #mindset #growth #success"
       };
     }
 
