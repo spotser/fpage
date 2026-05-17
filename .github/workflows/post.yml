@@ -25,7 +25,7 @@ jobs:
 
       - name: Download Heavy Font
         run: |
-          wget -qO font.ttf "https://github.com/googlefonts/montserrat/raw/main/fonts/ttf/Montserrat-Black.ttf"
+          wget -qO font.ttf "https://github.com/JulietaUla/Montserrat/raw/master/fonts/ttf/Montserrat-Black.ttf"
 
       - name: Run Carousel Poster
         # If the user defines these in GitHub Secrets, they will be used.

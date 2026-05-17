@@ -76,7 +76,7 @@ function getFontSize(text) {
   return 46;
 }
 
-function wrapText(text, maxChars = 16) {
+function wrapText(text, maxChars = 28) {
   const words = text.split(" ");
   const lines = [];
   let line = "";
@@ -254,7 +254,7 @@ Return strictly in the following JSON format:
       "emoji": "🧠"
     }
   ],
-  "caption": "An irresistible hook sentence that forces them to read the carousel.\\n\\n.\\n.\\n.\\n#hashtag1 #hashtag2 #hashtag3 #hashtag4 #hashtag5"
+  "caption": "A single-line, highly compelling curiosity hook sentence under 15 words that forces them to read the carousel. Strictly NO hashtags, NO dots, and NO line breaks."
 }
 
 Respond ONLY with valid JSON.
@@ -378,7 +378,7 @@ async function run() {
           { text: "Write down your strengths for 5 minutes every single morning to rewire your brain.", highlight: ["5 minutes", "rewire"], emoji: "⚡" },
           { text: "Change your inner thoughts, and you will inevitably change your entire world.", highlight: ["thoughts", "world"], emoji: "🚀" }
         ],
-        caption: "If you ignore this, you'll stay stuck in the exact same place for the next 5 years.\nSwipe to unlock the psychological secret. 👉\n\n.\n.\n.\n#mindset #growth #success #psychology #stoicism"
+        caption: "If you ignore this, you'll stay stuck in the exact same place for the next 5 years. 👉"
       };
     }
 
