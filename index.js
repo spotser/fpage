@@ -69,11 +69,11 @@ const THEMES = [
 
 function getFontSize(text) {
   const len = text.length;
-  if (len < 35) return 82;
-  if (len < 55) return 72;
-  if (len < 75) return 62;
-  if (len < 100) return 54;
-  return 46;
+  if (len < 35) return 72;
+  if (len < 55) return 62;
+  if (len < 75) return 52;
+  if (len < 100) return 44;
+  return 38;
 }
 
 function wrapText(text, maxChars = 28) {
@@ -138,7 +138,15 @@ function renderHighlightedText(lines, highlights, fontSize, theme) {
 
 function generateSlide(slide, index, theme, category, totalSlides) {
   const fontSize = getFontSize(slide.text);
-  const lines = wrapText(slide.text);
+  
+  // Calculate max characters per line dynamically to ensure it NEVER goes outside the glass card (safe text width 800px)
+  const physicalLimit = Math.floor(800 / (fontSize * 0.68));
+  
+  // Calculate an ideal maxChars to distribute the text into exactly 4 lines
+  const idealCharsPerLine = Math.ceil(slide.text.length / 4);
+  const maxChars = Math.min(physicalLimit, Math.max(16, idealCharsPerLine));
+  
+  const lines = wrapText(slide.text, maxChars);
   const renderedText = renderHighlightedText(lines, slide.highlight, fontSize, theme);
 
   return `
