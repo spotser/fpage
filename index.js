@@ -64,6 +64,33 @@ const THEMES = [
     accent2: "#8b5cf6",
     text: "#ffffff",
     sub: "#ddd6fe"
+  },
+  {
+    name: "Emerald Luxury",
+    bg1: "#051811",
+    bg2: "#0c2b1f",
+    accent: "#10b981",
+    accent2: "#fbbf24",
+    text: "#ffffff",
+    sub: "#a7f3d0"
+  },
+  {
+    name: "Sunset Aura",
+    bg1: "#1a0812",
+    bg2: "#2a0d1d",
+    accent: "#f97316",
+    accent2: "#ec4899",
+    text: "#ffffff",
+    sub: "#fed7aa"
+  },
+  {
+    name: "Royal Velvet",
+    bg1: "#070b19",
+    bg2: "#121b2d",
+    accent: "#6366f1",
+    accent2: "#a855f7",
+    text: "#ffffff",
+    sub: "#c7d2fe"
   }
 ];
 
@@ -125,8 +152,6 @@ function renderHighlightedText(lines, highlights, fontSize, theme) {
         font-family="'Outfit', 'Noto Sans Devanagari', sans-serif"
         text-anchor="middle"
         line-height="1.4"
-        stroke="currentColor"
-        stroke-width="1.5"
       >
         ${tspans}
       </text>
@@ -140,7 +165,7 @@ function generateSlide(slide, index, theme, category, totalSlides) {
   const fontSize = getFontSize(slide.text);
   
   // Calculate max characters per line dynamically to ensure it NEVER goes outside the glass card (safe text width 800px)
-  const physicalLimit = Math.floor(800 / (fontSize * 0.68));
+  const physicalLimit = Math.floor(800 / (fontSize * 0.72));
   
   // Calculate an ideal maxChars to distribute the text into exactly 4 lines
   const idealCharsPerLine = Math.ceil(slide.text.length / 4);
