@@ -125,6 +125,8 @@ function renderHighlightedText(lines, highlights, fontSize, theme) {
         font-family="'Outfit', 'Noto Sans Devanagari', sans-serif"
         text-anchor="middle"
         line-height="1.4"
+        stroke="currentColor"
+        stroke-width="1.5"
       >
         ${tspans}
       </text>
@@ -234,10 +236,10 @@ Generate a highly viral, swipe-worthy multi-slide Instagram-style carousel post 
 The niche/theme is: "${niche}".
 
 Rules:
-- Strictly generate exactly 4 slides.
-- Slide 1 MUST be a highly compelling, curiosity-driven question or hook.
-- Slide 2 and 3 must present 2 shocking, high-value, revealing insights.
-- Slide 4 MUST be a strong conclusion or call-to-action.
+- Strictly generate exactly 6 slides.
+- Slide 1 MUST be a highly compelling, irresistible curiosity hook.
+- Slide 2, 3, 4, and 5 MUST deliver the core value, psychological secrets, or steps. The context must feel complete, highly meaningful, and deeply insightful. Do not leave it half-baked.
+- Slide 6 MUST be a strong conclusion and call-to-action.
 - For each slide, provide an array of 1 to 2 exact words/phrases from the text to be highlighted.
 - Provide a relevant emoji for each slide.
 - Text must be in perfect, highly engaging English. Keep text punchy (max 12 words per slide).
@@ -252,7 +254,7 @@ Return strictly in the following JSON format:
       "emoji": "🧠"
     }
   ],
-  "caption": "A short engaging post caption with 5-8 hashtags"
+  "caption": "An irresistible hook sentence that forces them to read the carousel.\\n\\n.\\n.\\n.\\n#hashtag1 #hashtag2 #hashtag3 #hashtag4 #hashtag5"
 }
 
 Respond ONLY with valid JSON.
@@ -372,9 +374,11 @@ async function run() {
           { text: "Why do 90% of people never reach their true potential?", highlight: ["90%", "potential"], emoji: "🧠" },
           { text: "Because from childhood, their minds are programmed by fear and comparison.", highlight: ["fear", "comparison"], emoji: "⚠️" },
           { text: "Your brain believes whatever you repeatedly tell yourself every single day.", highlight: ["brain", "repeatedly"], emoji: "🔥" },
-          { text: "Write down your strengths for 5 minutes every morning and transform.", highlight: ["5 minutes", "transform"], emoji: "🚀" }
+          { text: "The secret is to isolate your focus entirely on what you control.", highlight: ["focus", "control"], emoji: "🎯" },
+          { text: "Write down your strengths for 5 minutes every morning to rewire.", highlight: ["5 minutes", "rewire"], emoji: "⚡" },
+          { text: "Change your thoughts, and you will inevitably change your world.", highlight: ["thoughts", "world"], emoji: "🚀" }
         ],
-        caption: "Change your thoughts, change your world. #mindset #growth #success"
+        caption: "If you ignore this, you'll stay stuck in the exact same place for the next 5 years.\nSwipe to unlock the psychological secret. 👉\n\n.\n.\n.\n#mindset #growth #success #psychology #stoicism"
       };
     }
 
