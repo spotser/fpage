@@ -210,11 +210,11 @@ function generateSlide(slide, index, theme, category, totalSlides) {
     <!-- Glass Card -->
     <rect x="60" y="120" rx="42" ry="42" width="960" height="1080" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
 
-    <!-- Emoji -->
-    <text x="120" y="260" font-size="72">${slide.emoji || '✨'}</text>
+    <!-- Emoji / Icon -->
+    <text x="100" y="258" font-size="54" fill="${theme.accent}" font-family="'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI Symbol', sans-serif">${slide.emoji || '✨'}</text>
 
     <!-- CATEGORY -->
-    <text x="210" y="250" font-size="30" fill="${theme.sub}" font-family="sans-serif" letter-spacing="4" font-weight="700">
+    <text x="180" y="250" font-size="30" fill="${theme.sub}" font-family="sans-serif" letter-spacing="4" font-weight="700">
       ${category.toUpperCase()}
     </text>
 
@@ -271,7 +271,7 @@ The niche/theme is: "${niche}".
 Rules:
 - Strictly generate exactly 6 slides.
 - Slide 1 MUST be a highly compelling, irresistible curiosity hook question (e.g. starting with "What if...", "Why do...", "How does...").
-- Slides 2, 3, 4, 5, and 6 MUST each contain a highly meaningful, deep psychological lesson, quote, or secret. EACH of these slides (2 to 6) MUST be very brief, punchy, and meaningful, strictly containing between 10 and 15 words. DO NOT write long paragraphs or stories. Keep it extremely concise and direct (10-15 words max per slide).
+- Slides 2, 3, 4, 5, and 6 MUST each contain a highly meaningful, deep psychological lesson, quote, or secret. EACH of these slides (2 to 6) MUST contain approximately 10 to 12 words (strictly not less than 8 words and not more than 14 words). DO NOT write extremely short 3-4 word phrases, and DO NOT write long paragraphs or stories. Keep them deeply insightful and impactful.
 - For each slide, provide an array of 1 to 2 exact words/phrases from the text to be highlighted.
 - Provide a relevant emoji for each slide.
 - Generate a "theme_title" that is a catchy, user-centric heading (e.g., "MINDSET SHIFT", "WEALTH SECRET #01") instead of just the niche name.
