@@ -2,440 +2,438 @@ import { Resvg } from "@resvg/resvg-js";
 import fs from "fs";
 
 // =========================================================
-// ENVIRONMENT & SECRETS LOADER
+// CONFIG
+// =========================================================
+const CONFIG = {
+  HANDLE: "@Akhil",
+  GROQ_MODEL: "llama-3.3-70b-versatile",
+  SLIDE_COUNT: 6,
+};
+
+// =========================================================
+// SECRETS LOADER
 // =========================================================
 function loadSecrets() {
-  let config = {};
+  let cfg = {};
   try {
-    if (fs.existsSync('./wrangler.toml')) {
-      const content = fs.readFileSync('./wrangler.toml', 'utf-8');
-      const getVal = (key) => {
-        const match = content.match(new RegExp(`${key}\\s*=\\s*"([^"]+)"`));
-        return match ? match[1] : null;
-      };
-      config.PAGE_OR_IG_ID = getVal('PAGE_OR_IG_ID');
-      config.PAGE_ACCESS_TOKEN = getVal('PAGE_ACCESS_TOKEN');
-      config.GROQ_API_KEY = getVal('GROQ_API_KEY');
+    if (fs.existsSync("./wrangler.toml")) {
+      const raw = fs.readFileSync("./wrangler.toml", "utf-8");
+      const get = (k) => { const m = raw.match(new RegExp(`${k}\\s*=\\s*"([^"]+)"`)); return m?.[1] ?? null; };
+      cfg.PAGE_OR_IG_ID     = get("PAGE_OR_IG_ID");
+      cfg.PAGE_ACCESS_TOKEN = get("PAGE_ACCESS_TOKEN");
+      cfg.GROQ_API_KEY      = get("GROQ_API_KEY");
     }
-  } catch(e) {
-    console.warn("Could not read wrangler.toml, relying on environment variables.");
-  }
-  
+  } catch { console.warn("wrangler.toml unreadable — using env vars."); }
   return {
-    PAGE_OR_IG_ID: process.env.PAGE_OR_IG_ID || config.PAGE_OR_IG_ID,
-    PAGE_ACCESS_TOKEN: process.env.PAGE_ACCESS_TOKEN || config.PAGE_ACCESS_TOKEN,
-    GROQ_API_KEY: process.env.GROQ_API_KEY || config.GROQ_API_KEY,
+    PAGE_OR_IG_ID:     process.env.PAGE_OR_IG_ID     ?? cfg.PAGE_OR_IG_ID,
+    PAGE_ACCESS_TOKEN: process.env.PAGE_ACCESS_TOKEN ?? cfg.PAGE_ACCESS_TOKEN,
+    GROQ_API_KEY:      process.env.GROQ_API_KEY      ?? cfg.GROQ_API_KEY,
   };
 }
-
 const SECRETS = loadSecrets();
-const GROQ_MODEL = "llama-3.3-70b-versatile";
 
 // =========================================================
-// SVG CAROUSEL TEMPLATE CONSTANTS
+// THEMES — 6 distinct multicoloured
 // =========================================================
-const WIDTH = 1080;
-const HEIGHT = 1350;
-
 const THEMES = [
-  {
-    name: "Neon Dark",
-    bg1: "#0f172a",
-    bg2: "#1e293b",
-    accent: "#38bdf8",
-    accent2: "#a855f7",
-    text: "#ffffff",
-    sub: "#cbd5e1"
-  },
-  {
-    name: "Luxury Gold",
-    bg1: "#0f0f0f",
-    bg2: "#1e1b16",
-    accent: "#fbbf24",
-    accent2: "#f59e0b",
-    text: "#ffffff",
-    sub: "#e5e7eb"
-  },
-  {
-    name: "Cyber Pink",
-    bg1: "#1e1b4b",
-    bg2: "#312e81",
-    accent: "#ec4899",
-    accent2: "#8b5cf6",
-    text: "#ffffff",
-    sub: "#ddd6fe"
-  },
-  {
-    name: "Emerald Luxury",
-    bg1: "#051811",
-    bg2: "#0c2b1f",
-    accent: "#10b981",
-    accent2: "#fbbf24",
-    text: "#ffffff",
-    sub: "#a7f3d0"
-  },
-  {
-    name: "Sunset Aura",
-    bg1: "#1a0812",
-    bg2: "#2a0d1d",
-    accent: "#f97316",
-    accent2: "#ec4899",
-    text: "#ffffff",
-    sub: "#fed7aa"
-  },
-  {
-    name: "Royal Velvet",
-    bg1: "#070b19",
-    bg2: "#121b2d",
-    accent: "#6366f1",
-    accent2: "#a855f7",
-    text: "#ffffff",
-    sub: "#c7d2fe"
-  }
+  { name:"Neon Dark",      bg1:"#060d1f", bg2:"#0f1e3a", accent:"#38bdf8", accent2:"#818cf8", glow1:"#1e40af", glow2:"#4f46e5", text:"#f1f5f9", sub:"#94a3b8" },
+  { name:"Luxury Gold",    bg1:"#0a0800", bg2:"#1a1200", accent:"#f59e0b", accent2:"#fbbf24", glow1:"#78350f", glow2:"#92400e", text:"#fef9f0", sub:"#d97706" },
+  { name:"Cyber Pink",     bg1:"#0d0016", bg2:"#1a0030", accent:"#e879f9", accent2:"#a78bfa", glow1:"#6b21a8", glow2:"#7c3aed", text:"#fdf4ff", sub:"#c084fc" },
+  { name:"Emerald Luxury", bg1:"#010f08", bg2:"#001a0e", accent:"#34d399", accent2:"#fbbf24", glow1:"#064e3b", glow2:"#065f46", text:"#ecfdf5", sub:"#6ee7b7" },
+  { name:"Sunset Aura",    bg1:"#0f0500", bg2:"#1e0a00", accent:"#fb923c", accent2:"#f43f5e", glow1:"#7c2d12", glow2:"#881337", text:"#fff7ed", sub:"#fdba74" },
+  { name:"Royal Velvet",   bg1:"#05030f", bg2:"#0e0824", accent:"#818cf8", accent2:"#c084fc", glow1:"#1e1b4b", glow2:"#3b0764", text:"#f5f3ff", sub:"#a5b4fc" },
 ];
 
-function getFontSize(text) {
-  const len = text.length;
-  if (len < 35) return 72;
-  if (len < 55) return 62;
-  if (len < 75) return 52;
-  if (len < 100) return 44;
-  return 38;
+// =========================================================
+// FONT SETUP
+// font.ttf — drop any TTF (e.g. Inter-Bold.ttf) as font.ttf in project root.
+// GitHub Actions: add a step to download the font before running the bot.
+// Without font.ttf, resvg falls back to system fonts (usually DejaVu on Linux).
+// =========================================================
+const HAS_FONT  = fs.existsSync("./font.ttf");
+const FONT_FAM  = HAS_FONT ? "'CardFont','Arial Black',sans-serif" : "'Arial Black','Liberation Sans','DejaVu Sans',sans-serif";
+
+function getFontFaceCSS() {
+  if (!HAS_FONT) return "";
+  const b64 = fs.readFileSync("./font.ttf").toString("base64");
+  return `@font-face{font-family:'CardFont';src:url('data:font/truetype;base64,${b64}') format('truetype');font-weight:700 900;}`;
 }
 
-function wrapText(text, maxChars = 28) {
+// =========================================================
+// TEXT UTILITIES
+// =========================================================
+function escapeXml(s) {
+  return String(s ?? "")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&apos;");
+}
+
+// Avg bold char width coefficient for Arial Black / DejaVu Bold
+const CHAR_W_COEF = 0.62;
+const TEXT_BOX_PX = 820; // usable width inside text rect
+const MAX_LINES   = 4;
+
+function computeLayout(text) {
+  // Try sizes from large to small until text fits in MAX_LINES lines
+  for (const fs of [84, 76, 68, 60, 54, 48]) {
+    const maxChars = Math.floor(TEXT_BOX_PX / (fs * CHAR_W_COEF));
+    const lines    = wordWrap(text, maxChars);
+    if (lines.length <= MAX_LINES) return { fs, lines, lh: fs * 1.52 };
+  }
+  const fs = 48;
+  return { fs, lines: wordWrap(text, Math.floor(TEXT_BOX_PX / (fs * CHAR_W_COEF))), lh: fs * 1.52 };
+}
+
+function wordWrap(text, maxChars) {
   const words = text.split(" ");
   const lines = [];
-  let line = "";
-  for (const word of words) {
-    if ((line + word).length > maxChars) {
-      lines.push(line.trim());
-      line = word + " ";
-    } else {
-      line += word + " ";
-    }
+  let cur = "";
+  for (const w of words) {
+    const next = cur ? cur + " " + w : w;
+    if (next.length > maxChars && cur) { lines.push(cur); cur = w; }
+    else cur = next;
   }
-  if (line.trim()) lines.push(line.trim());
+  if (cur) lines.push(cur);
   return lines;
 }
 
-function renderHighlightedText(lines, highlights, fontSize, theme) {
-  const totalHeight = lines.length * (fontSize * 1.75);
-  let y = 320 - (totalHeight / 2) + (fontSize / 2);
-
-  return lines.map(line => {
-    let modified = line;
-    const hl = Array.isArray(highlights) ? highlights : [];
-    hl.forEach(h => {
-      // Basic string replace for exact matches
-      if (h) modified = modified.split(h).join(`|||${h}|||`);
+// Regex-safe highlight split — longer highlights first to avoid substring clobber
+function splitHighlights(line, highlights) {
+  const hls = [...(highlights ?? [])].filter(Boolean).sort((a,b) => b.length - a.length);
+  let parts = [{ t: line, h: false }];
+  for (const hl of hls) {
+    const re = new RegExp(`(${hl.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")})`, "gi");
+    parts = parts.flatMap(p => {
+      if (p.h) return [p];
+      return p.t.split(re).filter(s=>s.length>0).map(s =>
+        s.toLowerCase() === hl.toLowerCase() ? { t:s, h:true } : { t:s, h:false }
+      );
     });
-
-    const parts = modified.split("|||");
-    const tspans = parts.map((part, i) => {
-      const isHighlight = hl.includes(part);
-      const span = `
-        <tspan
-          fill="${isHighlight ? theme.accent : theme.text}"
-          font-weight="900"
-          text-decoration="${isHighlight ? "underline" : "none"}"
-        >${part}</tspan>
-      `;
-      return span;
-    }).join("");
-
-    const textSvg = `
-      <text
-        x="540"
-        y="${y}"
-        font-size="${fontSize}"
-        font-family="'Outfit', 'Noto Sans Devanagari', sans-serif"
-        text-anchor="middle"
-        line-height="1.4"
-      >
-        ${tspans}
-      </text>
-    `;
-    y += fontSize * 1.75;
-    return textSvg;
-  }).join("");
-}
-
-function generateSlide(slide, index, theme, category, totalSlides) {
-  const fontSize = getFontSize(slide.text);
-  
-  // Calculate max characters per line dynamically to ensure it NEVER goes outside the glass card (safe text width 800px)
-  const physicalLimit = Math.floor(800 / (fontSize * 0.72));
-  
-  // Calculate an ideal maxChars to distribute the text into exactly 4 lines
-  const idealCharsPerLine = Math.ceil(slide.text.length / 4);
-  const maxChars = Math.min(physicalLimit, Math.max(16, idealCharsPerLine));
-  
-  const lines = wrapText(slide.text, maxChars);
-  const renderedText = renderHighlightedText(lines, slide.highlight, fontSize, theme);
-
-  return `
-  <svg width="${WIDTH}" height="${HEIGHT}" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <radialGradient id="g1">
-        <stop offset="0%" stop-color="${theme.accent}" stop-opacity="0.45"/>
-        <stop offset="100%" stop-color="${theme.bg1}" stop-opacity="0"/>
-      </radialGradient>
-      <radialGradient id="g2">
-        <stop offset="0%" stop-color="${theme.accent2}" stop-opacity="0.45"/>
-        <stop offset="100%" stop-color="${theme.bg2}" stop-opacity="0"/>
-      </radialGradient>
-      <filter id="blur">
-        <feGaussianBlur stdDeviation="50"/>
-      </filter>
-    </defs>
-
-    <!-- BACKGROUND -->
-    <rect width="100%" height="100%" fill="${theme.bg1}"/>
-
-    <!-- Animated Blobs (Static capture in resvg, but visually pleasing) -->
-    <circle cx="250" cy="250" r="300" fill="url(#g1)" filter="url(#blur)" />
-    <circle cx="850" cy="950" r="350" fill="url(#g2)" filter="url(#blur)" />
-
-    <!-- Noise Overlay -->
-    <rect width="100%" height="100%" fill="rgba(255,255,255,0.02)"/>
-
-    <!-- Decorative Shapes -->
-    <circle cx="950" cy="120" r="80" fill="${theme.accent}" opacity="0.15"/>
-    <rect x="70" y="1100" width="200" height="10" rx="5" fill="${theme.accent2}" opacity="0.4"/>
-
-    <!-- Quote Marks -->
-    <text x="70" y="180" font-size="160" fill="${theme.accent}" opacity="0.18" font-family="serif">“</text>
-
-    <!-- Glass Card -->
-    <rect x="60" y="120" rx="42" ry="42" width="960" height="1080" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
-
-    <!-- Emoji / Icon -->
-    <text x="100" y="258" font-size="54" fill="${theme.accent}" font-family="'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI Symbol', sans-serif">${slide.emoji || '✨'}</text>
-
-    <!-- CATEGORY -->
-    <text x="180" y="250" font-size="30" fill="${theme.sub}" font-family="sans-serif" letter-spacing="4" font-weight="700">
-      ${category.toUpperCase()}
-    </text>
-
-    <!-- SLIDE INDICATOR -->
-    <text x="960" y="250" font-size="28" fill="${theme.sub}" font-family="sans-serif" font-weight="700" opacity="0.6" text-anchor="end">
-      ${index + 1} / ${totalSlides}
-    </text>
-
-    <!-- MAIN TEXT -->
-    <g transform="translate(0,420)">
-      ${renderedText}
-    </g>
-
-    <!-- CTA BAR -->
-    <rect x="100" y="1120" width="320" height="70" rx="35" fill="${theme.accent}" opacity="0.18"/>
-    <text x="135" y="1165" font-size="30" fill="${theme.text}" font-family="sans-serif" font-weight="700">
-      @Akhil
-    </text>
-  </svg>
-  `;
-}
-
-async function renderSlidePng(slide, index, theme, category, totalSlides) {
-  const svg = generateSlide(slide, index, theme, category, totalSlides);
-  
-  const fontConfig = { loadSystemFonts: true };
-  // Check if downloaded font is available
-  if (fs.existsSync('./font.ttf')) {
-    fontConfig.fontFiles = ['./font.ttf'];
-    fontConfig.defaultFontFamily = 'Montserrat';
   }
+  return parts;
+}
 
-  const resvg = new Resvg(svg, {
-    fitTo: { mode: "width", value: WIDTH },
-    font: fontConfig
+// =========================================================
+// SVG SLIDE BUILDER
+// =========================================================
+const W = 1080, H = 1350;
+
+// Card bounds
+const CARD = { x:54, y:108, w:972, h:1134, rx:36 };
+
+// Text zone — vertically centred between header pill bottom and CTA top
+// Header pill bottom: CARD.y + 32 + 56 + a little gap = CARD.y + 110
+// CTA top:            CARD.y + CARD.h - 110
+const TZ_TOP    = CARD.y + 110;   // just below header divider
+const TZ_BOTTOM = CARD.y + CARD.h - 110; // just above CTA bar
+const TZ_CY     = (TZ_TOP + TZ_BOTTOM) / 2;
+const TZ_CX     = W / 2;
+
+// Text rect geometry helpers (computed each slide)
+function textRectGeometry(lines, fs, lh) {
+  const blockH  = lines.length * lh;
+  const rectTop = TZ_CY - blockH / 2 - fs * 0.55 - 24;
+  const rectH   = blockH + fs * 0.55 + 48;
+  const rectX   = TZ_CX - TEXT_BOX_PX / 2 - 28;
+  const rectW   = TEXT_BOX_PX + 56;
+  return { rectTop, rectH, rectX, rectW, firstLineY: TZ_CY - blockH / 2 + fs * 0.72 };
+}
+
+function buildSlide(slide, idx, total, theme, catTitle) {
+  const { fs, lines, lh } = computeLayout(slide.text);
+  const { rectTop, rectH, rectX, rectW, firstLineY } = textRectGeometry(lines, fs, lh);
+
+  const fontCSS = getFontFaceCSS();
+
+  // Build text lines SVG
+  let lineY = firstLineY;
+  const textLines = lines.map(line => {
+    const parts  = splitHighlights(line, slide.highlight);
+    const tspans = parts.map(p =>
+      `<tspan fill="${p.h ? theme.accent : theme.text}" font-weight="900"${p.h ? ' text-decoration="underline"':''} >${escapeXml(p.t)}</tspan>`
+    ).join("");
+    const y = lineY; lineY += lh;
+    return `<text x="${TZ_CX}" y="${y.toFixed(1)}" font-size="${fs}" font-family="${FONT_FAM}" font-weight="900" text-anchor="middle" dominant-baseline="auto">${tspans}</text>`;
   });
 
+  // Progress dots
+  const DOT_Y   = CARD.y + CARD.h - 50;
+  const DOT_GAP = 18, DOT_R = 4.5;
+  const dotsW   = total * DOT_R * 2 + (total - 1) * (DOT_GAP - DOT_R * 2);
+  const dotX0   = TZ_CX - dotsW / 2 + DOT_R;
+  const dots    = Array.from({ length: total }, (_, i) => {
+    const cx = dotX0 + i * DOT_GAP;
+    return i === idx
+      ? `<circle cx="${cx}" cy="${DOT_Y}" r="${DOT_R + 2.5}" fill="${theme.accent}"/>`
+      : `<circle cx="${cx}" cy="${DOT_Y}" r="${DOT_R}" fill="rgba(255,255,255,0.2)"/>`;
+  }).join("");
+
+  // Bullet (Unicode filled circle — renders everywhere, no emoji fallback needed)
+  const BULLET = "&#x25CF;"; // ●
+
+  return `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  ${fontCSS ? `<style>${fontCSS}</style>` : ""}
+  <radialGradient id="g1" cx="18%" cy="16%" r="52%">
+    <stop offset="0%" stop-color="${theme.glow1}" stop-opacity="0.95"/>
+    <stop offset="100%" stop-color="${theme.bg1}" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="g2" cx="82%" cy="82%" r="52%">
+    <stop offset="0%" stop-color="${theme.glow2}" stop-opacity="0.90"/>
+    <stop offset="100%" stop-color="${theme.bg2}" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="g3" cx="80%" cy="16%" r="36%">
+    <stop offset="0%" stop-color="${theme.accent2}" stop-opacity="0.28"/>
+    <stop offset="100%" stop-color="${theme.bg1}" stop-opacity="0"/>
+  </radialGradient>
+  <filter id="bigblur" x="-60%" y="-60%" width="220%" height="220%">
+    <feGaussianBlur stdDeviation="75"/>
+  </filter>
+  <filter id="softblur" x="-30%" y="-30%" width="160%" height="160%">
+    <feGaussianBlur stdDeviation="14"/>
+  </filter>
+</defs>
+
+<!-- BASE -->
+<rect width="${W}" height="${H}" fill="${theme.bg1}"/>
+<rect width="${W}" height="${H}" fill="url(#g1)" filter="url(#bigblur)"/>
+<rect width="${W}" height="${H}" fill="url(#g2)" filter="url(#bigblur)"/>
+<rect width="${W}" height="${H}" fill="url(#g3)" filter="url(#bigblur)"/>
+<rect width="${W}" height="${H}" fill="rgba(255,255,255,0.016)"/>
+
+<!-- DECORATIVE GEOMETRY -->
+<circle cx="980" cy="92"   r="130" fill="${theme.accent}"  opacity="0.075"/>
+<circle cx="980" cy="92"   r="66"  fill="${theme.accent}"  opacity="0.10"/>
+<circle cx="96"  cy="1270" r="88"  fill="none" stroke="${theme.accent2}" stroke-width="1.5" opacity="0.18"/>
+<circle cx="96"  cy="1270" r="44"  fill="${theme.accent2}" opacity="0.06"/>
+<!-- subtle diagonal rule -->
+<line x1="0" y1="${(H*0.73).toFixed(0)}" x2="${W}" y2="${(H*0.63).toFixed(0)}"
+  stroke="${theme.accent}" stroke-width="1" opacity="0.05"/>
+
+<!-- CARD OUTER GLOW -->
+<rect x="${CARD.x-2}" y="${CARD.y-2}" width="${CARD.w+4}" height="${CARD.h+4}"
+  rx="${CARD.rx+2}" ry="${CARD.rx+2}"
+  fill="none" stroke="${theme.accent}" stroke-width="1" opacity="0.16"
+  filter="url(#softblur)"/>
+
+<!-- GLASS CARD -->
+<rect x="${CARD.x}" y="${CARD.y}" width="${CARD.w}" height="${CARD.h}"
+  rx="${CARD.rx}" ry="${CARD.rx}"
+  fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.09)" stroke-width="1.5"/>
+
+<!-- HEADER PILL -->
+<rect x="${CARD.x+28}" y="${CARD.y+32}" width="${CARD.w-56}" height="56"
+  rx="14" ry="14"
+  fill="rgba(255,255,255,0.045)" stroke="rgba(255,255,255,0.065)" stroke-width="1"/>
+<!-- Bullet -->
+<text x="${CARD.x+56}" y="${CARD.y+62}"
+  font-size="20" fill="${theme.accent}" font-family="sans-serif" dominant-baseline="middle"
+>${BULLET}</text>
+<!-- Category -->
+<text x="${CARD.x+80}" y="${CARD.y+62}"
+  font-size="23" fill="${theme.sub}" font-family="${FONT_FAM}" font-weight="900"
+  letter-spacing="3" dominant-baseline="middle"
+>${escapeXml(catTitle.toUpperCase())}</text>
+<!-- Counter -->
+<text x="${CARD.x+CARD.w-52}" y="${CARD.y+62}"
+  font-size="21" fill="${theme.sub}" font-family="${FONT_FAM}" font-weight="700"
+  text-anchor="end" dominant-baseline="middle" opacity="0.50"
+>${idx+1}/${total}</text>
+<!-- Header rule -->
+<line x1="${CARD.x+28}" y1="${CARD.y+94}" x2="${CARD.x+CARD.w-28}" y2="${CARD.y+94}"
+  stroke="rgba(255,255,255,0.065)" stroke-width="1"/>
+
+<!-- QUOTE MARK DECORATION -->
+<text x="${CARD.x+32}" y="${CARD.y+240}"
+  font-size="190" fill="${theme.accent}" opacity="0.07"
+  font-family="Georgia,serif" dominant-baseline="auto">&#x201C;</text>
+
+<!-- TEXT RECTANGLE (blurred tinted bg for rectangular text alignment) -->
+<rect x="${rectX.toFixed(1)}" y="${rectTop.toFixed(1)}"
+  width="${rectW.toFixed(1)}" height="${rectH.toFixed(1)}"
+  rx="16" ry="16"
+  fill="${theme.accent}" opacity="0.06"/>
+<!-- Left accent border on text rect -->
+<rect x="${rectX.toFixed(1)}" y="${(rectTop+12).toFixed(1)}"
+  width="5" height="${(rectH-24).toFixed(1)}"
+  rx="3" ry="3"
+  fill="${theme.accent}" opacity="0.75"/>
+
+<!-- MAIN TEXT -->
+${textLines.join("\n")}
+
+<!-- PROGRESS DOTS -->
+${dots}
+
+<!-- CTA BAR -->
+<rect x="${CARD.x+28}"   y="${CARD.y+CARD.h-98}" width="262" height="52" rx="26" fill="${theme.accent}" opacity="0.14"/>
+<rect x="${CARD.x+30}"   y="${CARD.y+CARD.h-96}" width="258" height="48" rx="24" fill="rgba(0,0,0,0.32)"/>
+<text x="${CARD.x+28+131}" y="${CARD.y+CARD.h-72}"
+  font-size="25" fill="${theme.text}" font-family="${FONT_FAM}" font-weight="900"
+  text-anchor="middle" dominant-baseline="middle"
+>${escapeXml(CONFIG.HANDLE)}</text>
+
+<!-- BOTTOM ACCENT LINE -->
+<rect x="${CARD.x+28}" y="${CARD.y+CARD.h-24}" width="170" height="5" rx="2.5" fill="${theme.accent2}" opacity="0.5"/>
+</svg>`;
+}
+
+// =========================================================
+// PNG RENDERER
+// =========================================================
+async function renderPng(slide, idx, total, theme, catTitle) {
+  const svg = buildSlide(slide, idx, total, theme, catTitle);
+  const fontOpts = { loadSystemFonts: true };
+  if (HAS_FONT) { fontOpts.fontFiles = ["./font.ttf"]; fontOpts.defaultFontFamily = "CardFont"; }
+  const resvg = new Resvg(svg, { fitTo: { mode: "width", value: W }, font: fontOpts });
   return resvg.render().asPng();
 }
 
 // =========================================================
-// CONTENT GENERATION VIA GROQ
+// GROQ — CONTENT GENERATION
 // =========================================================
-function getRandomNiche() {
-  const niches = ["STOICISM", "WEALTH", "MOTIVATION", "PSYCHOLOGY"];
-  return niches[Math.floor(Math.random() * niches.length)];
-}
+const NICHES = [
+  "STOICISM", "WEALTH MINDSET", "MOTIVATION", "PSYCHOLOGY",
+  "DISCIPLINE", "SUCCESS HABITS", "EMOTIONAL INTELLIGENCE", "FOCUS & PRODUCTIVITY",
+];
 
-async function generateCarouselContent(niche) {
-  const prompt = `
-Generate a highly viral, swipe-worthy multi-slide Instagram-style carousel post in English.
-The niche/theme is: "${niche}".
+async function generateContent(niche) {
+  if (!SECRETS.GROQ_API_KEY) throw new Error("GROQ_API_KEY missing!");
 
-Rules:
-- Strictly generate exactly 6 slides.
-- Slide 1 MUST be a highly compelling, irresistible curiosity hook question (e.g. starting with "What if...", "Why do...", "How does...").
-- Slides 2, 3, 4, 5, and 6 MUST each contain a highly meaningful, deep psychological lesson, quote, or secret. EACH of these slides (2 to 6) MUST contain approximately 10 to 12 words (strictly not less than 8 words and not more than 14 words). DO NOT write extremely short 3-4 word phrases, and DO NOT write long paragraphs or stories. Keep them deeply insightful and impactful.
-- For each slide, provide an array of 1 to 2 exact words/phrases from the text to be highlighted.
-- Provide a relevant emoji for each slide.
-- Generate a "theme_title" that is a catchy, user-centric heading (e.g., "MINDSET SHIFT", "WEALTH SECRET #01") instead of just the niche name.
-- Text must be in perfect, highly engaging English.
+  const prompt = `You are a viral Instagram carousel copywriter. Create a ${CONFIG.SLIDE_COUNT}-slide carousel for: "${niche}".
 
-Return strictly in the following JSON format:
+RULES:
+1. Exactly ${CONFIG.SLIDE_COUNT} slides.
+2. Slide 1: hook question, 8-12 words, start with "What if", "Why do", "How does", "Did you know", etc.
+3. Slides 2-${CONFIG.SLIDE_COUNT}: each MUST be exactly 10-14 words — a deep psychological truth or actionable insight. No shorter. No longer.
+4. "highlight": array of 1-2 exact words/phrases from that slide's text to emphasise.
+5. "emoji": one relevant emoji per slide.
+6. "theme_title": catchy 2-4 word heading e.g. "MINDSET SHIFT", "WEALTH SECRET #1".
+7. "caption": unique, curiosity-driven hook UNDER 12 words + 1-2 emojis, then two newlines, then three dots each on a new line, then 5 viral hashtags.
+   Caption MUST be unique and niche-specific. Do NOT use generic phrases.
+   Format exactly:
+   [hook under 12 words] [emoji][emoji]\\n\\n.\\n.\\n.\\n#tag1 #tag2 #tag3 #tag4 #tag5
+
+Return ONLY raw JSON. No markdown fences. No explanation.
 {
-  "theme_title": "Catchy Heading Here",
-  "slides": [
-    {
-      "text": "Slide 1 Text in English",
-      "highlight": ["word1", "word2"],
-      "emoji": "🧠"
-    }
-  ],
-  "caption": "A single-line, highly compelling curiosity hook sentence under 15 words with 1-2 relevant emojis, followed by a double line break, then dots on separate lines (.\\n.\\n.\\n), and finally 5 highly relevant viral hashtags (e.g. '#niche #viral ...') to push them below the fold."
-}
-
-Respond ONLY with valid JSON.
-`;
-
-  if (!SECRETS.GROQ_API_KEY) throw new Error("GROQ_API_KEY is missing!");
+  "theme_title": "...",
+  "slides": [{"text":"...","highlight":["..."],"emoji":"..."}],
+  "caption": "..."
+}`;
 
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${SECRETS.GROQ_API_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.75
-    })
+    headers: { Authorization:`Bearer ${SECRETS.GROQ_API_KEY}`, "Content-Type":"application/json" },
+    body: JSON.stringify({ model:CONFIG.GROQ_MODEL, messages:[{role:"user",content:prompt}], temperature:0.82 }),
   });
+  if (!res.ok) throw new Error(`Groq: ${await res.text()}`);
 
-  if (!res.ok) {
-    throw new Error(`Groq API Error: ${await res.text()}`);
-  }
+  const raw   = (await res.json()).choices[0].message.content.trim();
+  const clean = raw.replace(/^```json\s*/,"").replace(/\s*```$/,"").trim();
+  const data  = JSON.parse(clean);
 
-  const json = await res.json();
-  const content = json.choices[0].message.content.trim();
-  const cleanStr = content.replace(/```json/g, "").replace(/```/g, "").trim();
-  return JSON.parse(cleanStr);
+  // Warn on word count drift — don't block
+  data.slides.forEach((s, i) => {
+    if (i === 0) return;
+    const wc = s.text.trim().split(/\s+/).length;
+    if (wc < 9 || wc > 15) console.warn(`  ⚠ Slide ${i+1} word count ${wc} (target 10-14)`);
+  });
+  return data;
 }
 
 // =========================================================
-// FACEBOOK API (MULTIPART FORM DATA)
+// FALLBACK
 // =========================================================
-async function getPageAccessToken(pageId, token) {
-  if (!token) return token;
+const FALLBACK = {
+  theme_title: "MINDSET SHIFT",
+  slides: [
+    { text:"What if one decision today could reshape your entire future?",         highlight:["one decision"],     emoji:"🧠" },
+    { text:"Most people never start because they wait to feel completely ready.",   highlight:["wait","ready"],      emoji:"⚠️" },
+    { text:"Your brain silently becomes whatever you choose to repeatedly think.",  highlight:["repeatedly","brain"],emoji:"🔁" },
+    { text:"True discipline means doing the hard work before you feel motivated.",  highlight:["discipline","work"], emoji:"🎯" },
+    { text:"Write three small wins every single morning to rewire your mindset.",   highlight:["three wins","rewire"],emoji:"⚡" },
+    { text:"Shift your inner narrative daily and you will shift your whole world.", highlight:["narrative","world"], emoji:"🚀" },
+  ],
+  caption:"This is the mindset shift that changes everything. 🧠👇\n\n.\n.\n.\n#mindset #psychology #success #stoicism #viral",
+};
+
+// =========================================================
+// FACEBOOK
+// =========================================================
+async function getPageToken(pid, token) {
   try {
-    const res = await fetch(`https://graph.facebook.com/v20.0/${pageId}?fields=access_token&access_token=${token}`);
-    if (res.ok) {
-      const json = await res.json();
-      if (json.access_token) return json.access_token;
-    }
-  } catch (e) {}
+    const r = await fetch(`https://graph.facebook.com/v20.0/${pid}?fields=access_token&access_token=${token}`);
+    if (r.ok) { const j = await r.json(); if (j.access_token) return j.access_token; }
+    console.warn(`Token exchange failed (${r.status}) — using provided token.`);
+  } catch (e) { console.warn("Token exchange error:", e.message); }
   return token;
 }
 
-async function uploadCarouselToFacebook(pngBuffers, caption) {
-  if (!SECRETS.PAGE_OR_IG_ID || !SECRETS.PAGE_ACCESS_TOKEN) {
-    throw new Error("Missing Facebook Page ID or Token!");
-  }
+async function uploadSlide(buf, i, pid, token) {
+  const fd = new FormData();
+  fd.append("access_token", token);
+  fd.append("published", "false");
+  fd.append("source", new Blob([buf],{type:"image/png"}), `slide_${i}.png`);
+  console.log(`  Uploading slide ${i+1}…`);
+  const r = await fetch(`https://graph.facebook.com/v20.0/${pid}/photos`,{method:"POST",body:fd});
+  if (!r.ok) throw new Error(`Slide ${i+1} upload failed: ${await r.text()}`);
+  const d = await r.json();
+  if (!d.id) throw new Error(`Slide ${i+1}: no ID in response`);
+  return { media_fbid: d.id };
+}
 
-  const pageId = SECRETS.PAGE_OR_IG_ID;
-  const pageAccessToken = await getPageAccessToken(pageId, SECRETS.PAGE_ACCESS_TOKEN);
-
-  const mediaIds = [];
-  
-  // 1. Upload all slides as unpublished photos
-  for (let i = 0; i < pngBuffers.length; i++) {
-    const formData = new FormData();
-    formData.append('access_token', pageAccessToken);
-    formData.append('published', 'false');
-    formData.append('source', new Blob([pngBuffers[i]], { type: 'image/png' }), `slide_${i}.png`);
-
-    console.log(`Uploading slide ${i + 1}...`);
-    const res = await fetch(`https://graph.facebook.com/v20.0/${pageId}/photos`, {
-      method: "POST",
-      body: formData
-    });
-
-    if (!res.ok) {
-      throw new Error(`Failed to upload slide ${i}: ${await res.text()}`);
-    }
-
-    const data = await res.json();
-    if (data.id) {
-      mediaIds.push({ media_fbid: data.id });
-    }
-  }
-
-  // 2. Publish multi-photo feed post
-  console.log("Publishing carousel post...");
-  const feedRes = await fetch(`https://graph.facebook.com/v20.0/${pageId}/feed`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      message: caption,
-      attached_media: JSON.stringify(mediaIds),
-      access_token: pageAccessToken
-    })
+async function postCarousel(pngs, caption) {
+  if (!SECRETS.PAGE_OR_IG_ID || !SECRETS.PAGE_ACCESS_TOKEN) throw new Error("Missing credentials!");
+  const pid   = SECRETS.PAGE_OR_IG_ID;
+  const token = await getPageToken(pid, SECRETS.PAGE_ACCESS_TOKEN);
+  const ids   = await Promise.all(pngs.map((b,i) => uploadSlide(b,i,pid,token)));
+  console.log("Publishing…");
+  const r = await fetch(`https://graph.facebook.com/v20.0/${pid}/feed`,{
+    method:"POST",
+    headers:{"Content-Type":"application/x-www-form-urlencoded"},
+    body: new URLSearchParams({message:caption, attached_media:JSON.stringify(ids), access_token:token}),
   });
-
-  if (!feedRes.ok) {
-    throw new Error(`Facebook Carousel Post failed: ${await feedRes.text()}`);
-  }
-
-  const feedData = await feedRes.json();
-  console.log("✅ Successfully posted carousel! Post ID:", feedData.id);
+  if (!r.ok) throw new Error(`Post failed: ${await r.text()}`);
+  const d = await r.json();
+  console.log("✅ Posted! ID:", d.id);
 }
 
 // =========================================================
-// MAIN RUNNER
+// MAIN
 // =========================================================
 async function run() {
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log("  FB Carousel Bot");
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+  const niche = NICHES[Math.floor(Math.random() * NICHES.length)];
+  console.log("Niche:", niche);
+
+  let content = FALLBACK;
   try {
-    console.log("Starting Carousel Generation...");
-    const niche = getRandomNiche();
-    console.log(`Selected Niche: ${niche}`);
-
-    console.log("Generating content via Groq...");
-    let content;
-    try {
-      content = await generateCarouselContent(niche);
-    } catch (e) {
-      console.error("Groq generation failed, using fallback:", e.message);
-      content = {
-        theme_title: "MINDSET SHIFT",
-        slides: [
-          { text: "Why do 90% of people never reach their true potential?", highlight: ["90%", "potential"], emoji: "🧠" },
-          { text: "Because from childhood, their minds are programmed by fear and constant comparison with others.", highlight: ["fear", "comparison"], emoji: "⚠️" },
-          { text: "Your brain believes whatever you repeatedly tell yourself every single day without fail.", highlight: ["brain", "repeatedly"], emoji: "🔥" },
-          { text: "The ultimate secret is to isolate your focus entirely on what you can control.", highlight: ["focus", "control"], emoji: "🎯" },
-          { text: "Write down your strengths for 5 minutes every single morning to rewire your brain.", highlight: ["5 minutes", "rewire"], emoji: "⚡" },
-          { text: "Change your inner thoughts, and you will inevitably change your entire world.", highlight: ["thoughts", "world"], emoji: "🚀" }
-        ],
-        caption: "If you ignore this, you'll stay stuck in the exact same place for the next 5 years. 👉🧠\n\n.\n.\n.\n#mindset #growth #success #psychology #stoicism"
-      };
-    }
-
-    console.log(`Generated ${content.slides.length} slides.`);
-
-    // Pick a consistent random theme for the entire carousel
-    const theme = THEMES[Math.floor(Math.random() * THEMES.length)];
-    console.log(`Selected Theme: ${theme.name}`);
-
-    const pngBuffers = [];
-    for (let i = 0; i < content.slides.length; i++) {
-      console.log(`Rendering SVG -> PNG for slide ${i + 1}...`);
-      const pngBuffer = await renderSlidePng(content.slides[i], i, theme, content.theme_title, content.slides.length);
-      pngBuffers.push(pngBuffer);
-    }
-
-    console.log("Uploading to Facebook...");
-    await uploadCarouselToFacebook(pngBuffers, content.caption);
-
-    console.log("All done!");
-  } catch (error) {
-    console.error("Fatal Error:", error);
-    process.exit(1);
+    console.log("Generating via Groq…");
+    content = await generateContent(niche);
+    console.log(`Theme: "${content.theme_title}"  Slides: ${content.slides.length}`);
+  } catch (e) {
+    console.error("Groq failed — using fallback:", e.message);
   }
+
+  const theme = THEMES[Math.floor(Math.random() * THEMES.length)];
+  console.log("Visual theme:", theme.name);
+
+  const pngs = [];
+  for (let i = 0; i < content.slides.length; i++) {
+    process.stdout.write(`  Rendering ${i+1}/${content.slides.length}… `);
+    pngs.push(await renderPng(content.slides[i], i, content.slides.length, theme, content.theme_title));
+    console.log("done");
+  }
+
+  console.log("Caption:", content.caption.split("\n")[0]);
+  await postCarousel(pngs, content.caption);
+
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log("  All done! ✅");
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 }
 
-run();
+run().catch(e => { console.error("Fatal:", e); process.exit(1); });
