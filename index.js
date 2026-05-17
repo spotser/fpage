@@ -12,7 +12,7 @@ const exec = promisify(execCb);
 // =========================================================
 const CONFIG = {
   HANDLE: "@Akhil",
-  GROQ_MODEL: "openai/gpt-4o",          // Change to your preferred model
+  GROQ_MODEL: "openai/gpt-oss-120b",          // Change to your preferred model
   SLIDE_COUNT: 6,
   SLIDE_DURATION: 3,                     // seconds per slide
   FPS: 30,
@@ -555,7 +555,7 @@ async function pngToClip(pngBuf, idx, duration = CONFIG.SLIDE_DURATION) {
 
   await exec(
     `ffmpeg -y -loop 1 -i "${pngPath}" -t ${duration} -vf "${vf}" ` +
-    `-c:v libx264 -preset fast -crf 18 "${clipPath}"`
+    `-c:v libx264 -preset fast -crf 15 "${clipPath}"`
   );
 
   return clipPath;
@@ -592,7 +592,7 @@ async function concatClipsWithTransitions(clipPaths, outputPath) {
 
   await exec(
     `ffmpeg -y ${inputs} -filter_complex "${filterStr}" -map "[vout]" ` +
-    `-c:v libx264 -preset fast -crf 18 "${outputPath}"`
+    `-c:v libx264 -preset fast -crf 15 "${outputPath}"`
   );
 }
 
@@ -622,7 +622,7 @@ async function addSlideOverlay(videoPath, outputPath, slideCount) {
   await exec(
     `ffmpeg -y -i "${videoPath}" ` +
     `-vf "drawbox=y=ih-8:x=0:w=iw*t/${slideCount * CONFIG.SLIDE_DURATION}:h=8:color=${encodeURIComponent("#38bdf8")}@0.7:t=fill" ` +
-    `-c:v libx264 -preset fast -crf 18 -c:a copy "${outputPath}"`
+    `-c:v libx264 -preset fast -crf 15 -c:a copy "${outputPath}"`
   );
 }
 
