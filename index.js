@@ -120,7 +120,7 @@ function wrapText(text, maxChars = 28) {
 }
 
 function renderHighlightedText(lines, highlights, fontSize, theme) {
-  const totalHeight = lines.length * (fontSize * 1.5);
+  const totalHeight = lines.length * (fontSize * 1.75);
   let y = 320 - (totalHeight / 2) + (fontSize / 2);
 
   return lines.map(line => {
@@ -137,7 +137,7 @@ function renderHighlightedText(lines, highlights, fontSize, theme) {
       const span = `
         <tspan
           fill="${isHighlight ? theme.accent : theme.text}"
-          font-weight="${isHighlight ? 900 : 700}"
+          font-weight="900"
           text-decoration="${isHighlight ? "underline" : "none"}"
         >${part}</tspan>
       `;
@@ -156,7 +156,7 @@ function renderHighlightedText(lines, highlights, fontSize, theme) {
         ${tspans}
       </text>
     `;
-    y += fontSize * 1.5;
+    y += fontSize * 1.75;
     return textSvg;
   }).join("");
 }
