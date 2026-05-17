@@ -103,21 +103,15 @@ function renderHighlightedText(lines, highlights, fontSize, theme) {
     });
 
     const parts = modified.split("|||");
-    let x = 0;
     const tspans = parts.map((part, i) => {
       const isHighlight = hl.includes(part);
       const span = `
         <tspan
-          x="${x}"
-          dy="0"
           fill="${isHighlight ? theme.accent : theme.text}"
           font-weight="${isHighlight ? 900 : 700}"
           text-decoration="${isHighlight ? "underline" : "none"}"
-        >
-          ${part}
-        </tspan>
+        >${part}</tspan>
       `;
-      x += part.length * (fontSize * 0.55);
       return span;
     }).join("");
 
