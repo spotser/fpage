@@ -23,9 +23,9 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Download Noto Sans Devanagari Font
+      - name: Download Heavy Font
         run: |
-          wget -qO NotoSansDevanagari-Bold.ttf "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansDevanagari/NotoSansDevanagari-Bold.ttf"
+          wget -qO font.ttf "https://github.com/googlefonts/montserrat/raw/main/fonts/ttf/Montserrat-Black.ttf"
 
       - name: Run Carousel Poster
         # If the user defines these in GitHub Secrets, they will be used.

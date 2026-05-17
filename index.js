@@ -198,7 +198,7 @@ function generateSlide(slide, index, theme, category, totalSlides) {
     <!-- CTA BAR -->
     <rect x="100" y="1120" width="320" height="70" rx="35" fill="${theme.accent}" opacity="0.18"/>
     <text x="135" y="1165" font-size="30" fill="${theme.text}" font-family="sans-serif" font-weight="700">
-      @akpage
+      @Akhil
     </text>
   </svg>
   `;
@@ -209,9 +209,9 @@ async function renderSlidePng(slide, index, theme, category, totalSlides) {
   
   const fontConfig = { loadSystemFonts: true };
   // Check if downloaded font is available
-  if (fs.existsSync('./NotoSansDevanagari-Bold.ttf')) {
-    fontConfig.fontFiles = ['./NotoSansDevanagari-Bold.ttf'];
-    fontConfig.defaultFontFamily = 'Noto Sans Devanagari';
+  if (fs.existsSync('./font.ttf')) {
+    fontConfig.fontFiles = ['./font.ttf'];
+    fontConfig.defaultFontFamily = 'Montserrat';
   }
 
   const resvg = new Resvg(svg, {
@@ -238,15 +238,15 @@ The niche/theme is: "${niche}".
 Rules:
 - Strictly generate exactly 6 slides.
 - Slide 1 MUST be a highly compelling, irresistible curiosity hook.
-- Slide 2, 3, 4, and 5 MUST deliver the core value, psychological secrets, or steps. The context must feel complete, highly meaningful, and deeply insightful. Do not leave it half-baked.
-- Slide 6 MUST be a strong conclusion and call-to-action.
+- Slides 2, 3, 4, 5, and 6 MUST each contain a highly meaningful, deep psychological lesson or secret. EACH of these slides (2 to 6) MUST have a minimum of 10 words. Do not give short half-baked sentences. Provide extreme value.
 - For each slide, provide an array of 1 to 2 exact words/phrases from the text to be highlighted.
 - Provide a relevant emoji for each slide.
-- Text must be in perfect, highly engaging English. Keep text punchy (max 12 words per slide).
+- Generate a "theme_title" that is a catchy, user-centric heading (e.g., "MINDSET SHIFT", "WEALTH SECRET #01") instead of just the niche name.
+- Text must be in perfect, highly engaging English.
 
 Return strictly in the following JSON format:
 {
-  "category": "${niche}",
+  "theme_title": "Catchy Heading Here",
   "slides": [
     {
       "text": "Slide 1 Text in English",
@@ -369,14 +369,14 @@ async function run() {
     } catch (e) {
       console.error("Groq generation failed, using fallback:", e.message);
       content = {
-        category: niche,
+        theme_title: "MINDSET SHIFT",
         slides: [
           { text: "Why do 90% of people never reach their true potential?", highlight: ["90%", "potential"], emoji: "🧠" },
-          { text: "Because from childhood, their minds are programmed by fear and comparison.", highlight: ["fear", "comparison"], emoji: "⚠️" },
-          { text: "Your brain believes whatever you repeatedly tell yourself every single day.", highlight: ["brain", "repeatedly"], emoji: "🔥" },
-          { text: "The secret is to isolate your focus entirely on what you control.", highlight: ["focus", "control"], emoji: "🎯" },
-          { text: "Write down your strengths for 5 minutes every morning to rewire.", highlight: ["5 minutes", "rewire"], emoji: "⚡" },
-          { text: "Change your thoughts, and you will inevitably change your world.", highlight: ["thoughts", "world"], emoji: "🚀" }
+          { text: "Because from childhood, their minds are programmed by fear and constant comparison with others.", highlight: ["fear", "comparison"], emoji: "⚠️" },
+          { text: "Your brain believes whatever you repeatedly tell yourself every single day without fail.", highlight: ["brain", "repeatedly"], emoji: "🔥" },
+          { text: "The ultimate secret is to isolate your focus entirely on what you can control.", highlight: ["focus", "control"], emoji: "🎯" },
+          { text: "Write down your strengths for 5 minutes every single morning to rewire your brain.", highlight: ["5 minutes", "rewire"], emoji: "⚡" },
+          { text: "Change your inner thoughts, and you will inevitably change your entire world.", highlight: ["thoughts", "world"], emoji: "🚀" }
         ],
         caption: "If you ignore this, you'll stay stuck in the exact same place for the next 5 years.\nSwipe to unlock the psychological secret. 👉\n\n.\n.\n.\n#mindset #growth #success #psychology #stoicism"
       };
@@ -391,7 +391,7 @@ async function run() {
     const pngBuffers = [];
     for (let i = 0; i < content.slides.length; i++) {
       console.log(`Rendering SVG -> PNG for slide ${i + 1}...`);
-      const pngBuffer = await renderSlidePng(content.slides[i], i, theme, content.category, content.slides.length);
+      const pngBuffer = await renderSlidePng(content.slides[i], i, theme, content.theme_title, content.slides.length);
       pngBuffers.push(pngBuffer);
     }
 
