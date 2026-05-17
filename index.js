@@ -7,7 +7,7 @@ import fs from "fs";
 const CONFIG = {
   HANDLE: "@Akhil",
 
-  GROQ_MODEL: "gpt-oss-120b",
+  GROQ_MODEL: "openai/gpt-oss-120b",
 
   WIDTH: 1080,
 
@@ -68,6 +68,14 @@ function loadSecrets() {
 
       cfg.GROQ_API_KEY =
         get("GROQ_API_KEY");
+
+      cfg.APP_ID = get("APP_ID");
+
+      cfg.APP_SECRET =
+        get("APP_SECRET");
+
+      cfg.USER_ACCESS_TOKEN =
+        get("USER_ACCESS_TOKEN");
     }
   } catch {}
 
@@ -83,6 +91,19 @@ function loadSecrets() {
     GROQ_API_KEY:
       process.env.GROQ_API_KEY ??
       cfg.GROQ_API_KEY,
+
+    APP_ID:
+      process.env.APP_ID ??
+      cfg.APP_ID,
+
+    APP_SECRET:
+      process.env.APP_SECRET ??
+      cfg.APP_SECRET,
+
+    USER_ACCESS_TOKEN:
+      process.env
+        .USER_ACCESS_TOKEN ??
+      cfg.USER_ACCESS_TOKEN,
   };
 }
 
@@ -795,6 +816,92 @@ Return ONLY raw JSON.
 }
 
 // =========================================================
+// TOKEN EXCHANGE
+// =========================================================
+async function getPageAccessToken() {
+  if (
+    SECRETS.PAGE_ACCESS_TOKEN &&
+    SECRETS.PAGE_ACCESS_TOKEN.startsWith(
+      "EA"
+    )
+  ) {
+    console.log(
+      "Using direct PAGE_ACCESS_TOKEN"
+    );
+
+    return SECRETS.PAGE_ACCESS_TOKEN;
+  }
+
+  if (
+    !SECRETS.APP_ID ||
+    !SECRETS.APP_SECRET ||
+    !SECRETS.USER_ACCESS_TOKEN
+  ) {
+    throw new Error(
+      "Missing APP_ID / APP_SECRET / USER_ACCESS_TOKEN"
+    );
+  }
+
+  console.log(
+    "Generating long-lived user token..."
+  );
+
+  const tokenRes = await fetch(
+    `https://graph.facebook.com/v20.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${SECRETS.APP_ID}&client_secret=${SECRETS.APP_SECRET}&fb_exchange_token=${SECRETS.USER_ACCESS_TOKEN}`
+  );
+
+  const tokenData =
+    await tokenRes.json();
+
+  if (!tokenData.access_token) {
+    throw new Error(
+      JSON.stringify(tokenData)
+    );
+  }
+
+  console.log(
+    "Fetching managed pages..."
+  );
+
+  const pagesRes = await fetch(
+    `https://graph.facebook.com/v20.0/me/accounts?access_token=${tokenData.access_token}`
+  );
+
+  const pagesData =
+    await pagesRes.json();
+
+  if (
+    !pagesData.data ||
+    !pagesData.data.length
+  ) {
+    throw new Error(
+      "No managed pages found"
+    );
+  }
+
+  const selectedPage =
+    pagesData.data.find(
+      (p) =>
+        p.id ===
+        SECRETS.PAGE_OR_IG_ID
+    ) || pagesData.data[0];
+
+  if (
+    !selectedPage.access_token
+  ) {
+    throw new Error(
+      "No page access token found"
+    );
+  }
+
+  console.log(
+    `Using page: ${selectedPage.name}`
+  );
+
+  return selectedPage.access_token;
+}
+
+// =========================================================
 // FACEBOOK
 // =========================================================
 async function uploadPhoto(
@@ -811,11 +918,11 @@ async function uploadPhoto(
   }
 
   const token =
-    SECRETS.PAGE_ACCESS_TOKEN;
+    await getPageAccessToken();
 
   if (!token) {
     throw new Error(
-      "Missing PAGE_ACCESS_TOKEN"
+      "Missing valid token"
     );
   }
 
@@ -850,13 +957,13 @@ async function uploadPhoto(
     }
   );
 
+  const text = await r.text();
+
   if (!r.ok) {
-    throw new Error(
-      await r.text()
-    );
+    throw new Error(text);
   }
 
-  const d = await r.json();
+  const d = JSON.parse(text);
 
   console.log(
     "Posted:",
