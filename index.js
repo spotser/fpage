@@ -6,7 +6,7 @@ import fs from "fs";
 // =========================================================
 const CONFIG = {
   HANDLE: "@Akhil",
-  GROQ_MODEL: "llama-3.3-70b-versatile",
+  GROQ_MODEL: "openai/gpt-oss-120b",
   SLIDE_COUNT: 6,
 };
 
