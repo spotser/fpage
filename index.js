@@ -214,12 +214,12 @@ function generateSlide(slide, index, theme, category, totalSlides) {
     <text x="120" y="260" font-size="72">${slide.emoji || '✨'}</text>
 
     <!-- CATEGORY -->
-    <text x="210" y="250" font-size="36" fill="${theme.sub}" font-family="sans-serif" letter-spacing="4" font-weight="700">
+    <text x="210" y="250" font-size="30" fill="${theme.sub}" font-family="sans-serif" letter-spacing="4" font-weight="700">
       ${category.toUpperCase()}
     </text>
 
     <!-- SLIDE INDICATOR -->
-    <text x="780" y="250" font-size="28" fill="${theme.sub}" font-family="sans-serif" font-weight="700" opacity="0.6">
+    <text x="960" y="250" font-size="28" fill="${theme.sub}" font-family="sans-serif" font-weight="700" opacity="0.6" text-anchor="end">
       ${index + 1} / ${totalSlides}
     </text>
 
@@ -270,8 +270,8 @@ The niche/theme is: "${niche}".
 
 Rules:
 - Strictly generate exactly 6 slides.
-- Slide 1 MUST be a highly compelling, irresistible curiosity hook.
-- Slides 2, 3, 4, 5, and 6 MUST each contain a highly meaningful, deep psychological lesson or secret. EACH of these slides (2 to 6) MUST have a minimum of 10 words. Do not give short half-baked sentences. Provide extreme value.
+- Slide 1 MUST be a highly compelling, irresistible curiosity hook question (e.g. starting with "What if...", "Why do...", "How does...").
+- Slides 2, 3, 4, 5, and 6 MUST each contain a highly meaningful, deep psychological lesson, quote, or secret. EACH of these slides (2 to 6) MUST be very brief, punchy, and meaningful, strictly containing between 10 and 15 words. DO NOT write long paragraphs or stories. Keep it extremely concise and direct (10-15 words max per slide).
 - For each slide, provide an array of 1 to 2 exact words/phrases from the text to be highlighted.
 - Provide a relevant emoji for each slide.
 - Generate a "theme_title" that is a catchy, user-centric heading (e.g., "MINDSET SHIFT", "WEALTH SECRET #01") instead of just the niche name.
@@ -287,7 +287,7 @@ Return strictly in the following JSON format:
       "emoji": "🧠"
     }
   ],
-  "caption": "A single-line, highly compelling curiosity hook sentence under 15 words that forces them to read the carousel. Strictly NO hashtags, NO dots, and NO line breaks."
+  "caption": "A single-line, highly compelling curiosity hook sentence under 15 words with 1-2 relevant emojis, followed by a double line break, then dots on separate lines (.\\n.\\n.\\n), and finally 5 highly relevant viral hashtags (e.g. '#niche #viral ...') to push them below the fold."
 }
 
 Respond ONLY with valid JSON.
@@ -411,7 +411,7 @@ async function run() {
           { text: "Write down your strengths for 5 minutes every single morning to rewire your brain.", highlight: ["5 minutes", "rewire"], emoji: "⚡" },
           { text: "Change your inner thoughts, and you will inevitably change your entire world.", highlight: ["thoughts", "world"], emoji: "🚀" }
         ],
-        caption: "If you ignore this, you'll stay stuck in the exact same place for the next 5 years. 👉"
+        caption: "If you ignore this, you'll stay stuck in the exact same place for the next 5 years. 👉🧠\n\n.\n.\n.\n#mindset #growth #success #psychology #stoicism"
       };
     }
 
