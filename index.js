@@ -12,7 +12,7 @@ const exec = promisify(execCb);
 // =========================================================
 const CONFIG = {
   HANDLE: "@Akhil",
-  GROQ_MODEL: "openai/gpt-4o",
+  GROQ_MODEL: "openai/gpt-oss-120b",
   SLIDE_COUNT: 6,
   SLIDE_DURATION: 3,           // seconds per slide
   FPS: 30,
