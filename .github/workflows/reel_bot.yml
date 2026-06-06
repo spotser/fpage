@@ -50,8 +50,8 @@ jobs:
         env:
           # ── Required secrets (GitHub repo → Settings → Secrets) ──
           GROQ_API_KEY:   ${{ secrets.GROQ_API_KEY }}    # Groq API key for content generation
-          FB_PAGE_ID:     ${{ secrets.PAGE_OR_IG_ID }}      # Facebook Page ID
-          FB_USER_TOKEN:  ${{ secrets.FB_ACCESS_TOKEN }}   # FB User token (instagram_content_publish scope bhi chahiye)
+          PAGE_OR_IG_ID:     ${{ secrets.PAGE_OR_IG_ID }}      # Facebook Page ID
+          PAGE_ACCESS_TOKEN:  ${{ secrets.PAGE_ACCESS_TOKEN }}   # FB User token (instagram_content_publish scope bhi chahiye)
 
           # ── Optional secrets (default values hain, override karna ho toh set karo) ──
           PAGE_NAME:      ${{ secrets.PAGE_NAME }}       # Default: "Psychology Daily"
