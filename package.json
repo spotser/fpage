@@ -1,9 +1,0 @@
-{
-  "name": "fb-carousel-bot",
-  "version": "1.0.0",
-  "type": "module",
-  "main": "index.js",
-  "dependencies": {
-    "@resvg/resvg-js": "^2.6.2"
-  }
-}
