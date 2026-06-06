@@ -1,0 +1,61 @@
+name: FB Quote Bot — English Premium
+
+on:
+  schedule:
+    # 8 posts/day — globally optimized for psychology/mindset content
+    # UTC times  →  IST (+5:30)
+    - cron: '0 2 * * *'    # 02:00 UTC → 07:30 IST  | India early risers
+    - cron: '0 4 * * *'    # 04:00 UTC → 09:30 IST  | Asia morning scroll
+    - cron: '0 6 * * *'    # 06:00 UTC → 11:30 IST  | UK morning / India mid-morning
+    - cron: '0 9 * * *'    # 09:00 UTC → 14:30 IST  | US East Coast morning
+    - cron: '0 11 * * *'   # 11:00 UTC → 16:30 IST  | Post-work Asia, US morning
+    - cron: '0 13 * * *'   # 13:00 UTC → 18:30 IST  | US East lunch / India evening
+    - cron: '30 17 * * *'  # 17:30 UTC → 23:00 IST  | US prime time
+    - cron: '0 20 * * *'   # 20:00 UTC → 01:30 IST  | US West Coast evening
+
+  workflow_dispatch:       # Manual trigger anytime
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20    # 20 min: video encode + uguu upload + IG container wait (2x90s)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'     # pip cache — repeated runs faster hongi
+
+      - run: pip install -r requirements.txt
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg   # video encoding ke liye
+
+      - name: Download fonts
+        run: |
+          mkdir -p fonts
+          # Poppins — main font (Bold, SemiBold, Regular)
+          curl -fL -o fonts/Poppins-Bold.ttf \
+            "https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-Bold.ttf"
+          curl -fL -o fonts/Poppins-SemiBold.ttf \
+            "https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-SemiBold.ttf"
+          curl -fL -o fonts/Poppins-Regular.ttf \
+            "https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-Regular.ttf"
+
+      - name: Run Reel Bot
+        env:
+          # ── Required secrets (GitHub repo → Settings → Secrets) ──
+          GROQ_API_KEY:   ${{ secrets.GROQ_API_KEY }}    # Groq API key for content generation
+          FB_PAGE_ID:     ${{ secrets.FB_PAGE_ID }}      # Facebook Page ID
+          FB_USER_TOKEN:  ${{ secrets.FB_USER_TOKEN }}   # FB User token (instagram_content_publish scope bhi chahiye)
+
+          # ── Optional secrets (default values hain, override karna ho toh set karo) ──
+          PAGE_NAME:      ${{ secrets.PAGE_NAME }}       # Default: "Psychology Daily"
+          BRAND_NAME:     ${{ secrets.BRAND_NAME }}      # Default: "Mindset Factory"
+          BRAND_HANDLE:   ${{ secrets.BRAND_HANDLE }}    # Default: "@MindsetFactory"
+
+        run: python psych_reel_bot_v7.py
