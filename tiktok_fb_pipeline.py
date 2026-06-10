@@ -57,6 +57,7 @@ def escape_ffmpeg_text(text: str) -> str:
     if not text: return ""
     text = text.replace("'", "").replace(":", "")
     text = text.replace("\\", "\\\\").replace(",", "\\,")
+    text = text.replace("%", "%%")  # FFmpeg drawtext % crash fix
     return text.encode('ascii', 'ignore').decode('ascii').strip()
 
 def setup_dirs():
@@ -245,7 +246,7 @@ def process_video(input_path: Path) -> Path | None:
         f"fps={d['fps']}",                                                                                    # Layer 9:  FPS shift
         watermark_filter,                                                                                      # Layer 10: Watermark (optional)
         f"colorchannelmixer=rr={d['gamma_r']}:gg={d['gamma_g']}:bb={d['gamma_b']}",                          # Layer 11: Per-channel RGB DNA
-        "colorspace=bt709",                                                                                    # Layer 12: Colorspace tag alter
+        "format=yuv420p,colorspace=all=bt709",                                                                 # Layer 12: Colorspace normalize + tag alter
         f"curves=r='0/0 0.5/{round(d['gamma_r']*0.5,3)} 1/1'",                                               # Layer 13: Curve shift R
         "deflicker=size=3:mode=am",                                                                           # Layer 14: Deflicker (temporal DNA)
     ]
