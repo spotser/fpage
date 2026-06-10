@@ -308,7 +308,7 @@ def generate_fb_caption(raw_caption: str) -> str | None:
         f"You are a Facebook Reels Growth Expert for Indian audiences.\n"
         f"Current Date: {datetime.now().strftime('%B %d, %Y')}\n"
         f"TikTok Video Caption: {raw_caption}\n\n"
-        f"Generate a VIRAL Facebook Reels caption in ENGLISH ONLY for the 2026 algorithm.\n\n"
+        f"Generate a VIRAL Facebook Reels caption in ENGLISH ONLY with emojis for the 2026 algorithm.\n\n"
         f"STRICT FORMAT — 4 blocks, each separated by a blank line:\n\n"
         f"Block 1 — Hook: One powerful attention-grabbing sentence in English. Max 100 chars. Use curiosity gap or emotional trigger.\n\n"
         f"Block 2 — Body: 2-3 lines of engaging value, storytelling or insight in English. Conversational tone.\n\n"
