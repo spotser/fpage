@@ -1,4 +1,4 @@
-name: TikTok → Instagram Reel + Story
+name: TikTok → Facebook Reel
 
 on:
   schedule:
@@ -34,11 +34,11 @@ jobs:
       - name: Run pipeline
         env:
           TIKTOK_PROFILE_ID: ${{ secrets.TIKTOK_PROFILE_ID }}
-          IG_ACCESS_TOKEN:   ${{ secrets.IG_ACCESS_TOKEN }}
-          IG_USER_ID:        ${{ secrets.IG_USER_ID }}
+          FB_PAGE_ID:        ${{ secrets.FB_PAGE_ID }}
+          FB_ACCESS_TOKEN:   ${{ secrets.FB_ACCESS_TOKEN }}
           GROQ_API_KEY:      ${{ secrets.GROQ_API_KEY }}
           WATERMARK_TEXT:    ${{ secrets.WATERMARK_TEXT }}
-        run: python tiktok_FB_pipeline.py
+        run: python tiktok_fb_pipeline.py
 
       - name: Save dedupe cache
         if: always()
