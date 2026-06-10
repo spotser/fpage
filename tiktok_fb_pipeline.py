@@ -68,6 +68,11 @@ def setup_dirs():
                 try: f.unlink()
                 except: pass
         d.mkdir(parents=True, exist_ok=True)
+    # Archive reset karo har run pe — yt-dlp deduplication
+    # UPLOAD_HISTORY (upload_history.txt) se handle hota hai, archive se nahi
+    if YT_DLP_ARCHIVE.exists():
+        try: YT_DLP_ARCHIVE.unlink()
+        except: pass
 
 def validate_env():
     missing = []
@@ -151,6 +156,18 @@ def _try_download_profile(profile: str) -> tuple[Path, str, str] | None:
         "--write-info-json",
         "-o", str(DOWNLOAD_DIR / "%(id)s.%(ext)s"),
     ]
+
+    # upload_history.txt se already-uploaded IDs ko yt-dlp archive mein inject karo
+    # taaki yt-dlp unhe skip kare aur agli fresh video download kare
+    uploaded_ids = load_history()
+    if uploaded_ids and YT_DLP_ARCHIVE.exists() is False:
+        try:
+            with open(YT_DLP_ARCHIVE, "w", encoding="utf-8") as af:
+                for uid in uploaded_ids:
+                    af.write(f"tiktok {uid}\n")
+            log(f"Archive mein {len(uploaded_ids)} uploaded IDs inject kiye — skip honge", "INFO")
+        except Exception as e:
+            log(f"Archive inject fail: {e}", "WARN")
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True)
