@@ -489,6 +489,50 @@ def fb_upload_reel(video_path: Path, caption: str) -> str | None:
 
     log(f"FB publish error: {pub}", "ERR"); return None
 
+def fb_upload_story(video_path: Path) -> str | None:
+    """FB Page Story — pehle video upload karo, phir video_stories pe publish karo"""
+    log("FB Story upload kar raha hoon...", "STEP")
+    try:
+        # Step 1: Video upload as unpublished
+        with open(video_path, "rb") as f:
+            upload_resp = requests.post(
+                f"{FB_BASE}/{FB_PAGE_ID}/videos",
+                data={
+                    "published":    "false",
+                    "access_token": PAGE_ACCESS_TOKEN,
+                },
+                files={"source": (video_path.name, f, "video/mp4")},
+                timeout=300
+            ).json()
+
+        if "id" not in upload_resp:
+            log(f"FB Story video upload fail: {upload_resp}", "ERR")
+            return None
+
+        video_id = upload_resp["id"]
+        log(f"FB Story video uploaded, id={video_id}")
+
+        # Step 2: Publish as Story
+        pub = requests.post(
+            f"{FB_BASE}/{FB_PAGE_ID}/video_stories",
+            data={
+                "video_id":     video_id,
+                "access_token": PAGE_ACCESS_TOKEN,
+            },
+            timeout=30
+        ).json()
+
+        if pub.get("success") or "id" in pub:
+            log(f"FB Story published!")
+            return video_id
+
+        log(f"FB Story publish error: {pub}", "ERR")
+        return None
+
+    except Exception as e:
+        log(f"FB Story exception: {e}", "ERR")
+        return None
+
 # ==========================================
 # INSTAGRAM REEL + STORY UPLOAD
 # ==========================================
@@ -652,7 +696,12 @@ def main():
             log("── FB Pipeline start ──", "STEP")
             fb_id = fb_upload_reel(p_file, caption)
             if fb_id:
-                log(f"FB done! video_id={fb_id}")
+                log(f"FB Reel done! video_id={fb_id}")
+                # FB Story bhi post karo same video se
+                try:
+                    fb_upload_story(p_file)
+                except Exception as e:
+                    log(f"FB Story fail (Reel ok hai): {e}", "WARN")
             else:
                 log("FB upload fail — Insta pipeline continue karega", "WARN")
         except Exception as e:
