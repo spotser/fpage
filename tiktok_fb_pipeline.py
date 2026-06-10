@@ -263,9 +263,8 @@ def process_video(input_path: Path) -> Path | None:
         f"fps={d['fps']}",                                                                                    # Layer 9:  FPS shift
         watermark_filter,                                                                                      # Layer 10: Watermark (optional)
         f"colorchannelmixer=rr={d['gamma_r']}:gg={d['gamma_g']}:bb={d['gamma_b']}",                          # Layer 11: Per-channel RGB DNA
-        "format=yuv420p,colorspace=all=bt709",                                                                 # Layer 12: Colorspace normalize + tag alter
-        f"curves=r='0/0 0.5/{round(d['gamma_r']*0.5,3)} 1/1'",                                               # Layer 13: Curve shift R
-        "deflicker=size=3:mode=am",                                                                           # Layer 14: Deflicker (temporal DNA)
+        "format=yuv420p",                                                                                      # Layer 12: Force yuv420p — fixes TikTok unknown colorspace crash
+        "deflicker=size=3:mode=am",                                                                           # Layer 13: Deflicker
     ]
     vf = ",".join(f for f in v_filters if f)
 
