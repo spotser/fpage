@@ -38,7 +38,7 @@ jobs:
           IG_USER_ID:        ${{ secrets.IG_USER_ID }}
           GROQ_API_KEY:      ${{ secrets.GROQ_API_KEY }}
           WATERMARK_TEXT:    ${{ secrets.WATERMARK_TEXT }}
-        run: python tiktok_insta_pipeline.py
+        run: python tiktok_FB_pipeline.py
 
       - name: Save dedupe cache
         if: always()
