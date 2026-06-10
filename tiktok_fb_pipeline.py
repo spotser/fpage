@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 TikTok Profile → Facebook Reel
-- Download: TikWM (primary) → yt-dlp (fallback)
+- Download: yt-dlp profile scraper (robust, archive-based)
 - Anti-Copyright: 14-Layer FFmpeg DNA Fingerprint (audio intact, sirf alter)
 - Caption: Groq AI (Facebook SEO Hinglish) → fallback
 - Upload: Facebook Graph API (direct — no temp host)
@@ -25,7 +25,7 @@ from datetime import datetime
 # CONFIGURATION
 # ==========================================
 
-TIKTOK_PROFILE_ID = os.environ.get("TIKTOK_PROFILE_ID", "").strip()
+TIKTOK_PROFILES   = [p.strip().lstrip("@") for p in os.environ.get("TIKTOK_PROFILE_ID", "").split(",") if p.strip()]
 FB_PAGE_ID        = os.environ.get("FB_PAGE_ID", "").strip()
 PAGE_ACCESS_TOKEN = os.environ.get("PAGE_ACCESS_TOKEN", "").strip()  # sys user token — startup pe page token se exchange ho jaata hai
 GROQ_API_KEY      = os.environ.get("GROQ_API_KEY", "").strip()
@@ -60,6 +60,7 @@ def escape_ffmpeg_text(text: str) -> str:
     return text.encode('ascii', 'ignore').decode('ascii').strip()
 
 def setup_dirs():
+    BASE_DIR.mkdir(parents=True, exist_ok=True)
     for d in [DOWNLOAD_DIR, PROCESSED_DIR]:
         if d.exists():
             for f in d.glob("*"):
@@ -69,7 +70,7 @@ def setup_dirs():
 
 def validate_env():
     missing = []
-    if not TIKTOK_PROFILE_ID: missing.append("TIKTOK_PROFILE_ID")
+    if not TIKTOK_PROFILES: missing.append("TIKTOK_PROFILE_ID")
     if not FB_PAGE_ID:         missing.append("FB_PAGE_ID")
     if not PAGE_ACCESS_TOKEN: missing.append("PAGE_ACCESS_TOKEN")
     if missing:
@@ -116,62 +117,75 @@ def is_duplicate_hash(file_hash: str) -> bool:
 # TIKWM — PROFILE VIDEO LIST
 # ==========================================
 
-def tikwm_list(username: str) -> list:
-    log(f"TikWM: @{username} ki videos fetch kar raha hoon...", "STEP")
-    videos, cursor = [], 0
-    while True:
-        try:
-            r = requests.post(
-                "https://www.tikwm.com/api/user/posts",
-                data={"unique_id": username, "count": 20, "cursor": cursor},
-                timeout=15)
-            d = r.json()
-            if d.get("code") != 0:
-                log(f"TikWM API error: {d.get('msg')}", "ERR"); break
-            items = d["data"].get("videos", [])
-            if not items: break
-            for v in items:
-                videos.append({
-                    "id":      str(v["video_id"]),
-                    "url":     v["play"],
-                    "caption": v.get("title", ""),
-                })
-            if not d["data"].get("hasMore"): break
-            cursor = d["data"]["cursor"]
-            time.sleep(0.8)
-        except Exception as e:
-            log(f"TikWM fetch error: {e}", "ERR"); break
-    log(f"TikWM: {len(videos)} videos mili")
-    return videos
-
 # ==========================================
-# DOWNLOAD — TikWM primary → yt-dlp fallback
+# DOWNLOAD -- yt-dlp profile scraper (robust)
 # ==========================================
 
-def download_video(video: dict, out: Path) -> bool:
-    # Primary: TikWM direct URL
+YT_DLP_ARCHIVE = BASE_DIR / "yt_dlp_archive.txt"
+
+def download_video() -> tuple[Path, str, str] | None:
+    for profile in TIKTOK_PROFILES:
+        result = _try_download_profile(profile)
+        if result:
+            return result
+    log("Koi bhi profile se naya video nahi mila.", "INFO")
+    return None
+
+def _try_download_profile(profile: str) -> tuple[Path, str, str] | None:
+    profile_url = f"https://www.tiktok.com/@{profile}"
+    log(f"yt-dlp: {profile_url} try kar raha hoon...", "STEP")
+
+    cmd = [
+        "yt-dlp",
+        profile_url,
+        "--download-archive", str(YT_DLP_ARCHIVE),
+        "--socket-timeout", "300",
+        "--retries", "100",
+        "--fragment-retries", "100",
+        "--concurrent-fragments", "1",
+        "-f", "wv*[vcodec*=avc1]+wa/b[ext=mp4]/b",
+        "-S", "res:720",
+        "--force-ipv4",
+        "--max-downloads", "1",
+        "--write-info-json",
+        "-o", str(DOWNLOAD_DIR / "%(id)s.%(ext)s"),
+    ]
+
     try:
-        r = requests.get(video["url"], stream=True, timeout=30,
-                         headers={"User-Agent": "Mozilla/5.0"})
-        r.raise_for_status()
-        with open(out, "wb") as f:
-            for chunk in r.iter_content(8192): f.write(chunk)
-        if out.stat().st_size > 50_000:
-            log(f"TikWM download ok: {out.name}"); return True
-        out.unlink(missing_ok=True)
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        # 101 = max-downloads hit (success), 0 = no new videos
+        if result.returncode not in [0, 101]:
+            log(f"yt-dlp error (code {result.returncode}): {result.stderr[:300]}", "ERR")
+            return None
     except Exception as e:
-        log(f"TikWM download fail: {e}", "WARN")
+        log(f"yt-dlp execution fail: {e}", "ERR")
+        return None
 
-    # Fallback: yt-dlp
-    log("yt-dlp fallback...", "STEP")
-    url = f"https://www.tiktok.com/@{TIKTOK_PROFILE_ID.lstrip('@')}/video/{video['id']}"
-    result = subprocess.run(
-        ["yt-dlp", "-f", "mp4", "-o", str(out),
-         "--no-warnings", "--quiet", "--no-playlist", url],
-        capture_output=True, timeout=90)
-    if out.exists() and out.stat().st_size > 50_000:
-        log(f"yt-dlp download ok: {out.name}"); return True
-    log("Download fail (dono try ho gaye)", "ERR"); return False
+    video_files = []
+    for ext in ["*.mp4", "*.mkv", "*.webm", "*.mov"]:
+        video_files.extend(DOWNLOAD_DIR.glob(ext))
+
+    if not video_files:
+        log("Koi naya video nahi mila (sab already downloaded hain).", "INFO")
+        return None
+
+    v_file = video_files[0]
+    vid_id = v_file.stem
+
+    # Caption from info.json
+    info_path = DOWNLOAD_DIR / f"{vid_id}.info.json"
+    raw_caption = "New Video"
+    if info_path.exists():
+        try:
+            meta = json.loads(info_path.read_text(encoding="utf-8"))
+            raw_caption = meta.get("title") or meta.get("description") or "New Video"
+        except Exception as e:
+            log(f"info.json read fail: {e}", "WARN")
+        try: info_path.unlink()
+        except: pass
+
+    log(f"Downloaded: {v_file.name} | caption: {raw_caption[:80]}")
+    return v_file, vid_id, raw_caption
 
 # ==========================================
 # 14-LAYER DNA FINGERPRINT
@@ -451,69 +465,52 @@ def main():
         log("Page token exchange fail — exit.", "ERR")
         sys.exit(1)
 
-    history_ids = load_history()
-
     log("══════════════════════════════════════════════")
-    log(f"  @{TIKTOK_PROFILE_ID} | Page={FB_PAGE_ID}")
+    log(f"  profiles={TIKTOK_PROFILES} | Page={FB_PAGE_ID}")
     log(f"  watermark={'ON' if WATERMARK_TEXT else 'OFF'}")
-    log(f"  history={len(history_ids)} videos")
     log("══════════════════════════════════════════════")
 
-    all_vids = tikwm_list(TIKTOK_PROFILE_ID)
-    new_vids = [v for v in all_vids if v["id"] not in history_ids]
+    result = download_video()
+    if not result:
+        log("Koi naya video nahi mila — exit.")
+        return
 
-    if not new_vids:
-        log("Sab videos already processed hain."); return
+    v_file, vid_id, raw_caption = result
+    p_file = None
 
-    log(f"{len(new_vids)} naye videos hain — pehli process karunga")
+    try:
+        # 1. Hash dedupe
+        file_hash = get_file_hash(v_file)
+        if is_duplicate_hash(file_hash):
+            log("Duplicate content (hash match) — skip", "WARN")
+            return
 
-    for idx, video in enumerate(new_vids):
-        vid_id      = video["id"]
-        raw_caption = video["caption"]
-        log(f"\n▶ [{idx+1}/{len(new_vids)}] id={vid_id}")
-        log(f"  caption: {raw_caption[:80]}")
+        # 2. Caption
+        caption = get_final_caption(raw_caption)
 
-        v_file = DOWNLOAD_DIR / f"{vid_id}.mp4"
-        p_file = None
+        # 3. 14-Layer Fingerprint
+        p_file = process_video(v_file)
+        if not p_file:
+            return
 
-        try:
-            # 1. Download
-            if not download_video(video, v_file):
-                continue
+        # 4. Facebook Reel upload
+        fb_id = fb_upload_reel(p_file, caption)
+        if not fb_id:
+            return
 
-            # 2. Hash dedupe
-            file_hash = get_file_hash(v_file)
-            if is_duplicate_hash(file_hash):
-                log("Duplicate content (hash match) — skip", "WARN")
-                v_file.unlink(missing_ok=True); continue
+        # 5. Save history
+        save_history(vid_id, fb_id, caption, file_hash)
+        log(f"Done! fb_video_id={fb_id}")
 
-            # 3. Caption
-            caption = get_final_caption(raw_caption)
+    except Exception as e:
+        log(f"Pipeline fail: {e}", "ERR")
+    finally:
+        for f in [v_file, p_file]:
+            if f and Path(f).exists():
+                try: Path(f).unlink()
+                except: pass
 
-            # 4. 14-Layer Fingerprint
-            p_file = process_video(v_file)
-            if not p_file:
-                continue
-
-            # 5. Facebook Reel upload (direct — no temp host)
-            fb_id = fb_upload_reel(p_file, caption)
-            if not fb_id:
-                continue
-
-            # 6. Save history
-            save_history(vid_id, fb_id, caption, file_hash)
-            log(f"✅ Done! video_id={fb_id}")
-            break  # per run sirf 1 video
-
-        except Exception as e:
-            log(f"Video {vid_id} fail: {e}", "ERR")
-        finally:
-            for f in [v_file, p_file]:
-                if f and Path(f).exists():
-                    try: Path(f).unlink()
-                    except: pass
-
-    log("\n══ PIPELINE COMPLETE ══")
+    log("══ PIPELINE COMPLETE ══")
 
 if __name__ == "__main__":
     main()
