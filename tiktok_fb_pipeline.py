@@ -238,12 +238,14 @@ def process_video(input_path: Path) -> Path | None:
     font_path = next((f for f in possible_fonts if os.path.exists(f)), "")
     font_config = f"fontfile='{font_path.replace(chr(92), '/')}':" if font_path else ""
 
-    safe_wm = escape_ffmpeg_text(WATERMARK_TEXT)
+    # % wala watermark drawtext crash karta hai — safe fallback
+    raw_wm = WATERMARK_TEXT if WATERMARK_TEXT and "%" not in WATERMARK_TEXT else "@onepercentlyf"
+    safe_wm = escape_ffmpeg_text(raw_wm)
     watermark_filter = (
         f"drawtext={font_config}text='{safe_wm}'"
-        f":fontcolor=white@0.35:fontsize=32"
+        f":fontcolor=white@0.5:fontsize=36"
         f":x=(w-tw)/2:y=h*0.88"
-        f":shadowcolor=black@0.5:shadowx=2:shadowy=2"
+        f":shadowcolor=black@0.7:shadowx=2:shadowy=2"
     ) if safe_wm else ""
 
     v_filters = [
