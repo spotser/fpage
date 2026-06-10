@@ -234,21 +234,20 @@ def process_video(input_path: Path) -> Path | None:
     ) if safe_wm else ""
 
     v_filters = [
-        "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920",                                # Layer 1:  Standardize
-        f"setpts={d['pts']}*PTS",                                                                             # Layer 2:  Speed shift
-        f"crop=iw*{d['cw']}:ih*{d['cw']}:iw*{d['cx']}:ih*{d['cx']}",                                        # Layer 3:  Jitter crop
-        f"eq=brightness={d['brightness']}:contrast={d['contrast']}:saturation={d['saturation']}:gamma=1.05", # Layer 4:  Color DNA
-        f"hue=h={d['hue']}",                                                                                  # Layer 5:  Hue shift
-        f"rotate={d['rotate']}:fillcolor=black:ow=iw:oh=ih",                                                 # Layer 6:  Micro-tilt
-        "vignette=PI/4+0.1*sin(t)",                                                                           # Layer 7:  Dynamic vignette
-        "noise=c0s=3:c0f=t+u",                                                                                # Layer 8:  Film grain
-        "unsharp=3:3:1.2:3:3:0.0",                                                                           # Layer 9:  Sharpness
-        f"fps={d['fps']}",                                                                                    # Layer 10: FPS shift
-        watermark_filter,                                                                                      # Layer 11: Watermark (optional)
-        f"pad=iw+{d['px_x']}:ih+{d['px_y']}:{d['px_x']}:{d['px_y']}:black,crop=1080:1920:0:0",              # Layer 12: Pixel shift (no flip)
-        f"colorchannelmixer=rr={d['gamma_r']}:gg={d['gamma_g']}:bb={d['gamma_b']}",                          # Layer 13: Per-channel RGB DNA
-        "colorspace=bt709",                                                                                    # Layer 14: Colorspace tag alter
-        "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920",                                # Final:    Resolution lock
+        f"setpts={d['pts']}*PTS",                                                                             # Layer 1:  Speed shift
+        f"crop=iw*{d['cw']}:ih*{d['cw']}:iw*{d['cx']}:ih*{d['cx']}",                                        # Layer 2:  DNA jitter crop
+        f"eq=brightness={d['brightness']}:contrast={d['contrast']}:saturation={d['saturation']}:gamma=1.05", # Layer 3:  Color DNA
+        f"hue=h={d['hue']}",                                                                                  # Layer 4:  Hue shift
+        f"rotate={d['rotate']}:fillcolor=black:ow=iw:oh=ih",                                                 # Layer 5:  Micro-tilt
+        "vignette=PI/4+0.1*sin(t)",                                                                           # Layer 6:  Dynamic vignette
+        "noise=c0s=3:c0f=t+u",                                                                                # Layer 7:  Film grain
+        "unsharp=3:3:1.2:3:3:0.0",                                                                           # Layer 8:  Sharpness
+        f"fps={d['fps']}",                                                                                    # Layer 9:  FPS shift
+        watermark_filter,                                                                                      # Layer 10: Watermark (optional)
+        f"colorchannelmixer=rr={d['gamma_r']}:gg={d['gamma_g']}:bb={d['gamma_b']}",                          # Layer 11: Per-channel RGB DNA
+        "colorspace=bt709",                                                                                    # Layer 12: Colorspace tag alter
+        f"curves=r='0/0 0.5/{round(d['gamma_r']*0.5,3)} 1/1'",                                               # Layer 13: Curve shift R
+        "deflicker=size=3:mode=am",                                                                           # Layer 14: Deflicker (temporal DNA)
     ]
     vf = ",".join(f for f in v_filters if f)
 
