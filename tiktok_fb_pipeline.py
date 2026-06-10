@@ -490,40 +490,58 @@ def fb_upload_reel(video_path: Path, caption: str) -> str | None:
     log(f"FB publish error: {pub}", "ERR"); return None
 
 def fb_upload_story(video_path: Path) -> str | None:
-    """FB Page Story — pehle video upload karo, phir video_stories pe publish karo"""
+    """FB Page Story — Reels jaisa 2-phase upload flow"""
     log("FB Story upload kar raha hoon...", "STEP")
     try:
-        # Step 1: Video upload as unpublished
-        with open(video_path, "rb") as f:
-            upload_resp = requests.post(
-                f"{FB_BASE}/{FB_PAGE_ID}/videos",
-                data={
-                    "published":    "false",
-                    "access_token": PAGE_ACCESS_TOKEN,
-                },
-                files={"source": (video_path.name, f, "video/mp4")},
-                timeout=300
-            ).json()
+        # Step 1: Start phase
+        init = requests.post(
+            f"{FB_BASE}/{FB_PAGE_ID}/video_stories",
+            data={
+                "upload_phase":  "start",
+                "access_token":  PAGE_ACCESS_TOKEN,
+            },
+            timeout=30
+        ).json()
 
-        if "id" not in upload_resp:
-            log(f"FB Story video upload fail: {upload_resp}", "ERR")
+        if "video_id" not in init:
+            log(f"FB Story init error: {init}", "ERR")
             return None
 
-        video_id = upload_resp["id"]
-        log(f"FB Story video uploaded, id={video_id}")
+        video_id   = init["video_id"]
+        upload_url = init.get("upload_url", "")
+        log(f"FB Story video_id={video_id}")
 
-        # Step 2: Publish as Story
+        # Step 2: Binary upload
+        file_size = video_path.stat().st_size
+        with open(video_path, "rb") as f:
+            upload_resp = requests.post(
+                upload_url,
+                headers={
+                    "Authorization": f"OAuth {PAGE_ACCESS_TOKEN}",
+                    "offset":        "0",
+                    "file_size":     str(file_size),
+                    "Content-Type":  "application/octet-stream",
+                },
+                data=f, timeout=300)
+
+        if upload_resp.status_code not in (200, 201):
+            log(f"FB Story binary upload fail: {upload_resp.text}", "ERR")
+            return None
+
+        # Step 3: Finish phase
         pub = requests.post(
             f"{FB_BASE}/{FB_PAGE_ID}/video_stories",
             data={
-                "video_id":     video_id,
-                "access_token": PAGE_ACCESS_TOKEN,
+                "upload_phase":  "finish",
+                "video_id":      video_id,
+                "video_state":   "PUBLISHED",
+                "access_token":  PAGE_ACCESS_TOKEN,
             },
             timeout=30
         ).json()
 
         if pub.get("success") or "id" in pub:
-            log(f"FB Story published!")
+            log(f"FB Story published! video_id={video_id}")
             return video_id
 
         log(f"FB Story publish error: {pub}", "ERR")
