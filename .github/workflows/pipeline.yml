@@ -1,0 +1,50 @@
+name: TikTok → Instagram Reel + Story
+
+on:
+  schedule:
+    - cron: '0 1 * * *'    # 6:30 AM IST  — India morning + Asia peak
+    - cron: '0 7 * * *'    # 12:30 PM IST — India lunch + Europe morning
+    - cron: '0 14 * * *'   # 7:30 PM IST  — India evening prime
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: |
+          pip install requests yt-dlp
+          sudo apt-get install -y ffmpeg
+
+      - name: Restore dedupe cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            upload_history.txt
+            hash_history.txt
+          key: dedupe-${{ github.run_number }}
+          restore-keys: dedupe-
+
+      - name: Run pipeline
+        env:
+          TIKTOK_PROFILE_ID: ${{ secrets.TIKTOK_PROFILE_ID }}
+          IG_ACCESS_TOKEN:   ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID:        ${{ secrets.IG_USER_ID }}
+          GROQ_API_KEY:      ${{ secrets.GROQ_API_KEY }}
+          WATERMARK_TEXT:    ${{ secrets.WATERMARK_TEXT }}
+        run: python tiktok_insta_pipeline.py
+
+      - name: Save dedupe cache
+        if: always()
+        uses: actions/cache@v4
+        with:
+          path: |
+            upload_history.txt
+            hash_history.txt
+          key: dedupe-${{ github.run_number }}
