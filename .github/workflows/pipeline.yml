@@ -20,8 +20,9 @@ jobs:
 
       - name: Install deps
         run: |
+          sudo apt-get update
+          sudo apt-get install -y --fix-missing ffmpeg
           pip install requests yt-dlp
-          sudo apt-get install -y ffmpeg
 
       - name: Restore dedupe cache
         uses: actions/cache@v4
@@ -36,7 +37,7 @@ jobs:
         env:
           TIKTOK_PROFILE_ID: ${{ secrets.TIKTOK_PROFILE_ID }}
           FB_PAGE_ID:        ${{ secrets.FB_PAGE_ID }}
-          FB_ACCESS_TOKEN:   ${{ secrets.FB_ACCESS_TOKEN }}
+          PAGE_ACCESS_TOKEN: ${{ secrets.PAGE_ACCESS_TOKEN }}
           GROQ_API_KEY:      ${{ secrets.GROQ_API_KEY }}
           WATERMARK_TEXT:    ${{ secrets.WATERMARK_TEXT }}
         run: python tiktok_fb_pipeline.py
