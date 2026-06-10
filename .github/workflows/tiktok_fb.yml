@@ -1,0 +1,52 @@
+name: TikTok → Facebook Reel
+
+on:
+  schedule:
+    - cron: '0 1  * * *'   # IST 6:30 AM  | SGP 9:00 AM  | NY 9:00 PM (prev)
+    - cron: '0 7  * * *'   # IST 12:30 PM | FRA 9:00 AM  | SGP 3:00 PM
+    - cron: '0 14 * * *'   # IST 7:30 PM  | FRA 4:00 PM  | NY 10:00 AM | LA 7:00 AM
+    - cron: '0 20 * * *'   # FRA 10:00 PM | NY 4:00 PM   | LA 1:00 PM
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --fix-missing ffmpeg
+          pip install requests yt-dlp
+
+      - name: Restore dedupe cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            upload_history.txt
+            hash_history.txt
+          key: dedupe-${{ github.run_number }}
+          restore-keys: dedupe-
+
+      - name: Run pipeline
+        env:
+          TIKTOK_PROFILE_ID: ${{ secrets.TIKTOK_PROFILE_ID }}
+          FB_PAGE_ID:        ${{ secrets.FB_PAGE_ID }}
+          PAGE_ACCESS_TOKEN: ${{ secrets.PAGE_ACCESS_TOKEN }}
+          GROQ_API_KEY:      ${{ secrets.GROQ_API_KEY }}
+          WATERMARK_TEXT:    ${{ secrets.WATERMARK_TEXT }}
+        run: python tiktok_fb_pipeline.py
+
+      - name: Save dedupe cache
+        if: always()
+        uses: actions/cache@v4
+        with:
+          path: |
+            upload_history.txt
+            hash_history.txt
+          key: dedupe-${{ github.run_number }}
