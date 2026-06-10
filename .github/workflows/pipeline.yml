@@ -30,6 +30,7 @@ jobs:
           path: |
             upload_history.txt
             hash_history.txt
+            temp_work/yt_dlp_archive.txt
           key: dedupe-${{ github.run_number }}
           restore-keys: dedupe-
 
@@ -49,4 +50,5 @@ jobs:
           path: |
             upload_history.txt
             hash_history.txt
+            temp_work/yt_dlp_archive.txt
           key: dedupe-${{ github.run_number }}
