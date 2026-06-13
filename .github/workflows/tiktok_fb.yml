@@ -2,10 +2,7 @@ name: TikTok → Facebook Reel
 
 on:
   schedule:
-    - cron: '0 1  * * *'   # IST 6:30 AM  | SGP 9:00 AM  | NY 9:00 PM (prev)
-    - cron: '0 7  * * *'   # IST 12:30 PM | FRA 9:00 AM  | SGP 3:00 PM
-    - cron: '0 14 * * *'   # IST 7:30 PM  | FRA 4:00 PM  | NY 10:00 AM | LA 7:00 AM
-    - cron: '0 20 * * *'   # FRA 10:00 PM | NY 4:00 PM   | LA 1:00 PM
+    - cron: '30 15  * * *'   # IST 09:00 PM
   workflow_dispatch:
 
 jobs:
